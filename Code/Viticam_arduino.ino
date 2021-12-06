@@ -6,6 +6,11 @@
 unsigned long timeprevious = millis();
 int transistor = 2 ;
 
+
+
+
+
+
 void setup() {
   //Serial.begin(9600);
   pinMode(transistor, OUTPUT);
