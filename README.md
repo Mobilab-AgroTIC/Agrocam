@@ -12,7 +12,7 @@ git pull origin
 **Démarrer la script au boot :**
 Dans le script, ajouter au début 
 ```
-#! bin/sh
+#! bin/bash
 ```
 
 Donner tous les droits au script :
