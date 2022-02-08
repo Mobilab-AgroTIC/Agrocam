@@ -1,7 +1,15 @@
 # AgriCam
 La caméra connectée pour suivre l'évolution de vos cultures !
+**Ajouter la librairie WiringPi**
+```
+sudo apt-get install git
+git clone https://github.com/WiringPi/WiringPi.git
+cd WiringPi
+git pull origin
+./build
+```
 
-Démarrer la script au boot :
+**Démarrer la script au boot :**
 Dans le script, ajouter au début 
 ```
 #! bin/sh
