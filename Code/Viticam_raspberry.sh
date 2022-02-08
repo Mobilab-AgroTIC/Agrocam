@@ -13,7 +13,8 @@ gpio pwmr 2000
 gpio -g pwm 18 90
 
 #take picture
-raspistill -w 1024 -h 768 -o /home/pi/Viticam/temp.jpg
+libcamera-jpeg -o /home/pi/Viticam/temp.jpg
+
 echo "shooting done.";
 sleep 2
 
