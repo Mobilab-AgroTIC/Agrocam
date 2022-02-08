@@ -13,6 +13,7 @@ gpio pwmr 2000
 gpio -g pwm 18 90
 
 #take picture
+mkdir -p Viticam
 libcamera-jpeg -o /home/pi/Viticam/temp.jpg
 
 echo "shooting done.";
@@ -39,6 +40,7 @@ while [  $STATE == "error" ]; do
 python << END_OF_PYTHON
 import ftplib
 import RPi.GPIO as GPIO
+from id import *
 from datetime import datetime
 
 now = datetime.now()
@@ -46,7 +48,7 @@ current_date = now.strftime("%Y-%m-%d_%H%M%S")
 
 print("date and time =", current_date)
 
-session = ftplib.FTP('ftp.agrotic.org','simondev@agrotic.org','**********')
+session = ftplib.FTP(hostname,user,password)
 file = open('/home/pi/Viticam/temp.jpg','rb')
 session.storbinary('STOR /img/dev1_'+ current_date +'.jpg', file)
 file.close()
@@ -56,6 +58,7 @@ END_OF_PYTHON
 
 DATE=$(date +"%Y-%m-%d_%H%M")
 echo "Sending done. Archiving..."
+mkdir -p Viticam/images
 sudo mv /home/pi/Viticam/temp.jpg /home/pi/Viticam/images/$DATE.jpg
 echo "Finished!";
 
@@ -69,7 +72,7 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(controlPin, GPIO.IN)
 
 i=1
-while (GPIO.input(controlPin) = 1) :
+while (GPIO.input(controlPin) == 1) :
 	time.sleep(5)
 	print("ControlPin is not LOW. i = ", i)
 	i += 1
