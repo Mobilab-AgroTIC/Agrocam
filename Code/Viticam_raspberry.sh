@@ -40,13 +40,19 @@ while [  $STATE == "error" ]; do
 python << END_OF_PYTHON
 import ftplib
 import RPi.GPIO as GPIO
-from id import *
+import os
 from datetime import datetime
+from dotenv import load_dotenv
 
 now = datetime.now()
 current_date = now.strftime("%Y-%m-%d_%H%M%S")
 
 print("date and time =", current_date)
+
+load_dotenv("/home/pi/.env")
+hostname=os.environ.get('hostname")
+user=os.environ.get('user')
+password=os.environ.get('password')
 
 session = ftplib.FTP(hostname,user,password)
 file = open('/home/pi/Viticam/temp.jpg','rb')
@@ -67,7 +73,7 @@ python << END_OF_PYTHON
 import time
 import RPi.GPIO as GPIO
 
-controlPin=24
+controlPin=23
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(controlPin, GPIO.IN)
 
