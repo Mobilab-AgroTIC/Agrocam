@@ -32,7 +32,7 @@ void loop() {
   digitalWrite(transistor, LOW);   
   delay(50);
   blk(1);
-  for (int i = 1; i <3150 ; i++){ //3600 pour 8h, 3150 avec le recalage
+  for (int i = 1; i <3600 ; i++){ //3600 pour 8h, 3150 avec le recalage
       LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
   }
 }
