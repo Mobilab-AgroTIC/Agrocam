@@ -1,4 +1,4 @@
-# AgriCam
+# Agroam
 La caméra connectée pour suivre l'évolution de vos cultures !
 **Ajouter la librairie WiringPi**
 ```
