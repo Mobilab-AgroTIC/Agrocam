@@ -35,8 +35,8 @@ sudo cp -R /home/pi/.local/lib/python3.9/site-packages/dotenv /usr/lib/python3.9
 # Ajouter les fichiers sur le raspberry pi #
 Cette opération peut 
 
-**Démarrer la script au boot :**
-Dans le script, ajouter au début 
+# Démarrer la script au boot : #
+Attention pour que cela fonctionne il faut que le script Agrocam_ 
 ```
 #! bin/sh
 ```
