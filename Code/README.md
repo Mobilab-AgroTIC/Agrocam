@@ -60,7 +60,6 @@ sed -i -e 's/\r$//' Agrocam_raspberry.sh
 # Démarrer la script au reboot : #
 Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 23 au 3,3v pour que l'Agrocam reste allumée.
 
-
 Ouvrir le crontab 
 ```
 sudo crontab -e
@@ -74,4 +73,3 @@ Ajouter ```>> /var/log/Agrocam.log 2>&1``` à la ligne précédente pour créer 
 # Arduino #
 - Téléverser le script Arduino sur un Arduino promini 3,3v
 - Suivre le schéma de montage pour le transistor (à faire)
-
