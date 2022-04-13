@@ -33,19 +33,11 @@ pip install python-dotenv
 sudo cp -R /home/pi/.local/lib/python3.9/site-packages/dotenv /usr/lib/python3.9 //On déplace la librairie pour qu'elle soit trouvée en démarrage automatique
 ```
 # Ajouter les fichiers sur le raspberry pi #
-Cette opération peut 
+Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
 
-# Démarrer la script au boot : #
-Attention pour que cela fonctionne il faut que le script Agrocam_ 
-```
-#! bin/sh
-```
-
-Donner tous les droits au script :
-```
-chmod 777 Viticam_raspberry.sh
-```
-Création d'un fichier .env dans home/pi/
+- Glisser déposer Viticam_raspberry.sh dans /home/pi
+- Glisser déposer .env dans /home/pi une fois modifié (hostname,user,password). Attention le fichier peut être caché
+    Ou alors créer ce fichier depuis le terminal
 ```
 touch .env
 sudo nano .env
@@ -56,6 +48,20 @@ hostname = ""
 user = ""
 password =""
 ```
+**Attention :** Le script Agrocam_raspberry.sh contient ```sudo shutdown -h now``` à la fin
+
+# Démarrer la script au boot : #
+Attention pour que cela fonctionne il faut que le script Agrocam_raspberry.sh commence par :  
+```
+#! bin/sh
+```
+
+Donner tous les droits au script :
+```
+chmod 777 Viticam_raspberry.sh
+```
+Création d'un fichier .env dans home/pi/
+
 
 Activer le script au reboot
 Ouvrir le crontab 
