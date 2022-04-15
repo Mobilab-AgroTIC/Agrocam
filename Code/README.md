@@ -6,7 +6,7 @@
 - Dans les paramètres (ajouter des photos) :
     - Activer le SSH
     - Définir un mot de passe 
-    - Définir les paramètres Wifi (SSID, Password) du dongle 4G
+    - Définir les paramètres Wifi (SSID, Password) du dongle 4G --> détailler la procédure de paramétrage du dongle 4G
 
 # Se connecter au Raspberry depuis un PC #
 - Mettre le raspberry Pi sous tension avec le dongle 4G branché
