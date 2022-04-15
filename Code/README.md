@@ -16,10 +16,11 @@
 - Depuis WinSCP ouvrir Putty
 
 # Configurer le raspberry #
+Les parties ci-dessous ne sont pas nécessaires mais il est possible que si le reste ne fonctionne pas, le problème vienne de là.
 ## Activer la camera ##
-Ouvrir les paramètres ```sudo raspi-config``` puis ```3 Interface Options/I1 Legacy Camera/YES/Finish/RebootYes``` puis il faut refaire la même opération pour désactiver la caméra legacy
+Si la caméra ne marche pas, ouvrir les paramètres ```sudo raspi-config``` puis ```3 Interface Options/I1 Legacy Camera/YES/Finish/RebootYes```
 ## Activer les ports GPIO ##
-Ouvrir les paramètres ```sudo raspi-config``` puis ```3 Interface Options/``` A priori pas besoin de ça
+Si le servomoteur ne marche pas, ouvrir les paramètres ```sudo raspi-config``` puis ```3 Interface Options/``` A priori pas besoin de ça
 # Installer les librairies #
 ## Installer git ##
 ```
@@ -31,8 +32,10 @@ git clone https://github.com/WiringPi/WiringPi.git
 cd WiringPi
 git pull origin
 ./build
+cd ..
 ```
 ## Installer pip et python-dotenv ##
+Cela peut prendre un peu de temps 
 ```
 sudo apt-get install python3-pip
 pip install python-dotenv
@@ -41,9 +44,20 @@ sudo cp -R /home/pi/.local/lib/python3.9/site-packages/dotenv /usr/lib/python3.9
 *On déplace la librairie pour qu'elle soit trouvée en démarrage automatique*
 # Ajouter les fichiers sur le raspberry pi #
 Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
+## Le script de l'Agrocam ##
+Glisser déposer Agrocam_raspberry.sh dans /home/pi
 
-- Glisser déposer Viticam_raspberry.sh dans /home/pi
-- Glisser déposer .env dans /home/pi une fois modifié (hostname,user,password). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. Attention le fichier peut être caché
+Donner tous les droits au script et effacer les "\r" et "r" de fin de ligne en cas d'édition du script sur Windows :
+```
+chmod 777 Agrocam_raspberry.sh
+sed -i -e 's/\r$//' Agrocam_raspberry.sh
+```
+**Attention :** Le script Agrocam_raspberry.sh contient ```sudo shutdown -h now``` à la fin, pour débugger le script il est donc recommandé de commenter cette ligne pour éviter d'éteindre le script
+
+## Les variables d'environnement ##
+Maintenant on va déposer dans un fichier séparé du script les variables qui permettent de se connecter au serveur FTP où seront stockées les photos
+
+Glisser déposer .env dans /home/pi une fois modifié (hostname,user,password). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. Attention le fichier peut être caché
     Ou alors créer ce fichier depuis le terminal
 ```
 touch .env
@@ -55,12 +69,6 @@ hostname = ""
 user = ""
 password =""
 ```
-Donner tous les droits au script et effacer les "\r" et "r" de fin de ligne en cas d'édition du script sur Windows :
-```
-chmod 777 Agrocam_raspberry.sh
-sed -i -e 's/\r$//' Agrocam_raspberry.sh
-```
-**Attention :** Le script Agrocam_raspberry.sh contient ```sudo shutdown -h now``` à la fin, pour débugger le script il est donc recommandé de commenter cette ligne pour éviter d'éteindre le script
 
 # Démarrer la script au reboot : #
 Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 24 au 3,3v pour que l'Agrocam reste allumée.
