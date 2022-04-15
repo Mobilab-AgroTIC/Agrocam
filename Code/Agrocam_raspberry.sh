@@ -13,7 +13,7 @@ gpio pwmr 2000
 gpio -g pwm 18 90
 
 #take picture
-mkdir -p Agrocam
+mkdir -p /home/pi/Agrocam
 libcamera-jpeg -o /home/pi/Agrocam/temp.jpg
 
 echo "shooting done.";
