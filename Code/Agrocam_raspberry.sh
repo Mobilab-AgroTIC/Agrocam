@@ -50,7 +50,7 @@ current_date = now.strftime("%Y-%m-%d_%H%M%S")
 print("date and time =", current_date)
 
 load_dotenv("/home/pi/.env")
-hostname=os.environ.get('hostname")
+hostname=os.environ.get('hostname')
 user=os.environ.get('user')
 password=os.environ.get('password')
 
@@ -73,7 +73,7 @@ python << END_OF_PYTHON
 import time
 import RPi.GPIO as GPIO
 
-controlPin=23
+controlPin=24
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(controlPin, GPIO.IN)
 
