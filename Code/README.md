@@ -1,15 +1,26 @@
-# Initialiser le Raspberry Pi #
-- Installer Raspberry Pi imager https://www.raspberrypi.com/software/
-- Insérer la carte SD dans le PC
-- Ouvrir Raspberry Pi imager
-- Sélectionner espace de stockage correspondant à la carte SD et sélectionner l'OS : raspi lite 32 bit
-- Dans les paramètres (ajouter des photos) :
-    - Activer le SSH
-    - Définir un mot de passe 
-    - Définir les paramètres Wifi (SSID, Password, pays (FR)) du dongle 4G --> détailler la procédure de paramétrage du dongle 4G
+Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le raspberry et l'arduino
 
-# Se connecter au Raspberry depuis un PC #
-- Mettre le raspberry Pi sous tension avec le dongle 4G branché
+# 1. Paramétrer le dongle 4G
+Suivre la notice d'utilisation du dongle pour éditer son SSID et son mot de passe. Ces deux informations sont à conserver pour établir la connexion entre le Raspberry et le dongle.
+# 2. Initialiser le Raspberry Pi
+- Installer Raspberry Pi imager https://www.raspberrypi.com/software/
+- Ouvrir Raspberry Pi imager
+- Insérer la carte SD du raspberry dans le PC
+- Sélectionner l'espace de stockage correspondant à la carte SD et sélectionner l'OS : **Raspberry Pi OS Lite (32-bit)**
+<img src="https://user-images.githubusercontent.com/93132152/169273540-02b78e90-f551-4a8f-ac33-b90f7be4cffa.png" width=30% height=30%>  <img src="https://user-images.githubusercontent.com/93132152/169275055-28434132-3a4c-42e0-8752-84e8525d4922.png" width=30% height=30%>
+
+- Dans les paramètres <img src="https://user-images.githubusercontent.com/93132152/169275716-50c48613-8d7e-4b10-8681-f49c881cf00c.png" width=4% height=4%>:
+    - Activer le SSH
+    - Définir un mot de passe pour le Raspberry et un nom d'utilisateur (conserver "pi")
+    - Définir les paramètres Wifi (SSID, Password, pays (FR)) du dongle 4G. ** Bien penser à au paramètre "FR"**
+<img src="https://user-images.githubusercontent.com/93132152/169276815-ce32ffe7-997c-40b8-b6e8-bc613ae2f673.png" width=30% height=30%>
+- Cliquer sur "save" puis sur "écrire"
+- L'écriture peut prendre du temps et n'hésitez pas à faire les installations de la partie 3 en attendant
+
+
+# 3. Se connecter au Raspberry depuis un PC #
+- Brancher le dongle 4G au raspberry
+- 
 - Connecter un smartphone au réseau du dongle 4G
 - Avec l'application mobile Net analyzer identifier l'adresse IP du raspberry Pi
 - Sur PC, installer WinSCP et se connecter au rasperry : protocole de fichier : SFTP; Nom d'hôte : IP; Nom d'utilisateur : pi; Mot de passe : défini précédemment
