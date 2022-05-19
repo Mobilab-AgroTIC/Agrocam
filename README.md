@@ -1,3 +1,13 @@
 # Agrocam
-La caméra connectée pour suivre l'évolution de vos cultures !
+L'Agrocam est une caméra connectée pour suivre l'évolution de vos cultures ! Elle permet de prendre une photo à intervalles réguliers !
 Ici vous trouverez les étapes générales à suivre pour l'assemblage de votre Agrocam. Des informations plus détaillées sont présentes dans les Readme de chaque dossier ```Agrocam/Code``` et ```Agrocam/Fichiers 3D```
+
+
+
+# Où installer une Agrocam
+L'installation se fait facilement sur un piquet de palissage. Il faut que la parcelle soit couverte par le réseau 3G/4G.
+
+# Présentation générale du fonctionnement
+L'Agrocam se base sur une carte [raspberry pi zero](https://fr.aliexpress.com/item/32862749459.html?spm=a2g0o.productlist.0.0.2db345dfJ8qqIP&algo_pvid=d2d9674d-896a-4ba8-a8f7-3204eff93039&algo_exp_id=d2d9674d-896a-4ba8-a8f7-3204eff93039-56&pdp_ext_f=%7B%22sku_id%22%3A%2265489160780%22%7D&pdp_npi=2%40dis%21EUR%21%2194.15%21%21%21%21%21%400b0a050b16529547418287107e2ee8%2165489160780%21sea) et d'une [picam](https://fr.aliexpress.com/item/4000078355774.html?spm=a2g0o.productlist.0.0.3b0b78afgj07rV&algo_pvid=7b9f3a4e-c2a0-4328-92a0-ba677d3226c6&algo_exp_id=7b9f3a4e-c2a0-4328-92a0-ba677d3226c6-12&pdp_ext_f=%7B%22sku_id%22%3A%2210000000203526796%22%7D&pdp_npi=2%40dis%21EUR%21%219.19%21%21%21%21%21%400b0a050b16529546046245087e2ee8%2110000000203526796%21sea). Un script hybride (shell et python) est installé sur l'Agrocam et permet d'envoyer une photo sur un serveur FTP via internet. La photo est acquise et envoyée à chaque allumage du raspberry sui s'éteint une fois la tache accomplie. La communication réseau se fait à l'aide d'un [dongle 4G](https://fr.aliexpress.com/item/1005004055536615.html?spm=a2g0o.productlist.0.0.598076b34EWXMu&algo_pvid=d27b7dc1-f063-45e8-842d-b50b623dfcb6&algo_exp_id=d27b7dc1-f063-45e8-842d-b50b623dfcb6-6&pdp_ext_f=%7B%22sku_id%22%3A%2212000028196486635%22%7D&pdp_npi=1%40dis%7CEUR%7C%7C14.7%7C%7C%7C%7C%7C%400b0a187916512350350418464e6aef%7C12000028196486635%7Csea) branché au port mini usb de la carte Raspberry. Ce dongle 4G permet de diffuser un réseau wifi auquel se connecte le raspberry. 
+
+Une carte [arduino pro mini](https://fr.aliexpress.com/item/32821902128.html?spm=a2g0o.productlist.0.0.20893f604QgAUg&algo_pvid=2ff0cfa4-a34d-447c-98d9-61316018d354&algo_exp_id=2ff0cfa4-a34d-447c-98d9-61316018d354-0&pdp_ext_f=%7B%22sku_id%22%3A%2267225925112%22%7D&pdp_npi=2%40dis%21EUR%21%215.55%21%21%21%21%21%400b0a050b16529550773306660e2ee6%2167225925112%21sea) permet de gérer l'allumage et l'exctinction à intervalle régulier du raspberry grâce au script embarqué. L'alimentation du raspberry se fait grâce à une power bank. L'arduino active un transistor [IRF9540N](https://fr.aliexpress.com/wholesale?catId=0&initiative_id=SB_20220519021646&origin=y&SearchText=IRF9540N&spm=a2g0o.detail.1000002.0) qui permet de connecter la powerbank au raspberry.
