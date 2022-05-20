@@ -15,13 +15,25 @@ Suivre la notice d'utilisation du dongle pour éditer son SSID et son mot de pas
     - Définir les paramètres Wifi (SSID, Password, pays (FR)) du dongle 4G. ** Bien penser à au paramètre "FR"**
 <img src="https://user-images.githubusercontent.com/93132152/169276815-ce32ffe7-997c-40b8-b6e8-bc613ae2f673.png" width=30% height=30%>
 - Cliquer sur "save" puis sur "écrire"
-- L'écriture peut prendre du temps et n'hésitez pas à faire les installations de la partie 3 en attendant
+- L'écriture peut prendre du temps, n'hésitez pas à faire les installations de la partie 3 en attendant
 
+# 3. Installer les logiciels pour la suite
+- Installer [WinSCP](https://winscp.net/eng/download.php) sur votre PC. Ce logiciel permet de se connecter au raspberry en SSH, de parcourir ses fichier et d'interagir avec le terminal de commandes.
+- Installer [Network analyzer](https://play.google.com/store/apps/details?id=net.techet.netanalyzerlite.an&hl=fr&gl=US) sur votre smartphone. Cette application permet de scaner un réseau wifi et de trouver les appareils (leur adresse IP) qui y sont connectés.
 
-# 3. Se connecter au Raspberry depuis un PC #
-- Brancher le dongle 4G au raspberry
-- 
-- Connecter un smartphone au réseau du dongle 4G
+# 4. Réaliser les branchements
+- Insérer la carte SD dans le raspberry
+- Brancher la Picam. Attention au sens de branchement de la nappe de cable. Attention les connecteurs sont fragiles, à manipuler avec précautions.
+<img src="https://www.raspberrypi.com/app/uploads/2016/05/2016-05-15-16.32.19-768x576.jpg" width=20% height=20%>
+
+- Brancher le servo moteur sur les broches du Raspberry. (photo !)
+- Brancher le dongle 4G au Raspberry sur le port **"USB"** _cf. photo ci-dessous_
+- Brancher l'alimentation sur le port **"PWR IN"** _cf. photo ci-dessous_
+<img src="https://user-images.githubusercontent.com/93132152/169502193-72963340-17c8-46ee-b322-8d32348ea31f.png"  width=30% height=30%>
+
+# 4. Se connecter au Raspberry depuis un PC #
+
+- Connecter un smartphone au réseau du dongle 4G (avec SSID et mot de passe précédemment paramétrés)
 - Avec l'application mobile Net analyzer identifier l'adresse IP du raspberry Pi
 - Sur PC, installer WinSCP et se connecter au rasperry : protocole de fichier : SFTP; Nom d'hôte : IP; Nom d'utilisateur : pi; Mot de passe : défini précédemment
 - Depuis WinSCP ouvrir Putty
