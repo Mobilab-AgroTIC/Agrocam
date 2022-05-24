@@ -138,5 +138,35 @@ END_OF_PYTHON
 ```
 
 # 2. Programmer l'allumage de l'Agrocam
-- Téléverser le script Arduino sur un Arduino promini 3,3v
-- Suivre le schéma de montage pour le transistor (à faire)
+On va se servir d'un arduino mini pour alimenter le Raspberry à intervalles régulier (et donc prendre une photo). L'arduino active un transistor qui lui même connecte le raspberry à une power bank _(cf. schéma en partie 3)_ 
+- Installer le logiciel [Arduino](https://www.arduino.cc/en/software)
+## 2.1 Brancher l'Arduino au PC
+- Utiliser un FTDI pour relier l'Arduino mini au PC. S'il s'agit d'un Arduino mini 3,3 V penser à ce que le FTDI soit sur la position 3,3V (boutou ou cavalier selon les modèles)
+<img src="https://user-images.githubusercontent.com/93132152/170056873-bf504cc6-de3e-4f86-b064-992f53fd7af1.png"  width=20% height=20%>
+
+- Attention au sens de branchement du FTDI, les broches VCC, GND doivent coïncider. De même RX doit être branché sur TX et inversement :
+<img src="https://user-images.githubusercontent.com/93132152/170057494-17264b12-1341-4d30-bbc1-56be233e0f04.jpg"  width=20% height=20%>
+
+- Dans le logiciel Arduino, dans ```Outil > Type de carte``` sélectionner la carte **"Arduino Pro or Pro Mini"**
+- Puis sélectionner le port qui s'est ajouté à la liste en branchant le cable USB (celui relié au FTDI) à l'ordinateur, dans ```Outil > Port```
+<img src="https://user-images.githubusercontent.com/93132152/170059933-924f515d-7931-45b7-b47e-672c3da757bc.png"  width=20% height=20%>
+
+## 2.2 Téléverser le script 
+- Depuis Github copier le script Agrocam_arduino.ino et le coller dans le logiciel Arduino.
+- Sauvegarder et téléverser le script :<img src="https://user-images.githubusercontent.com/93132152/170060569-35ab2f8e-8374-4a47-8603-4ba0fc10ead4.png" width=2% height=2%>
+
+## 2.3 Modifier la fréquence d'acquisition d'image
+Par défaut le script va lancer l'allumage approximativement toutes les 8h mais il est possible de modifier cette durée. Pour cela :
+- ouvrir le script
+- Trouver la boucle :
+```
+for (int i = 1; i <3600 ; i++){ //3600 pour 8h, 3150 avec le recalage
+      LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+  }
+```
+
+- Modifier 3600 par une autre valeur. La boucle permet de mettre l'Arduino en sommeil pour 8 secondes, la durée totale sera donc un multiple de 8 secondes.
+- Téléverser une fois le script modifié
+
+# 3. Réaliser le montage électronique
+Nous avons maintenant un Raspberry qui fonctionne mais uniquement lorsqu'il est alimenté sur secteur. Cette partie vise à réaliser un montage pour permettre 
