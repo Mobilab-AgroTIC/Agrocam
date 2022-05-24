@@ -1,7 +1,10 @@
 Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et l'Arduino promini 3,3 V. Le tutoriel est découpé en 3 grandes étapes : 
-**- 1. Programmer l'Agrocam**
-**- 2. Programmer l'allumage de l'Agrocam**
-**- 3. Réaliser le montage électronique**
+
+**1. Programmer l'Agrocam**
+
+**2. Programmer l'allumage de l'Agrocam**
+
+**3. Réaliser le montage électronique**
 
 # 1. Programmer l'Agrocam 
 ## 1.1. Paramétrer le dongle 4G
