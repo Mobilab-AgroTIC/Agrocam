@@ -174,10 +174,22 @@ for (int i = 1; i <3600 ; i++){ //3600 pour 8h, 3150 avec le recalage
 # 3. Réaliser le montage électronique
 L'objectif de cette partie est de modifier l'arrivée de courant du Raspberry pour que celle-ci soit contrôlée par l'Arduino Mini par l'intermédiaire du transistor IRLZ44N.
 ## 3.1 Cablage sur la breadboard
-Vous devez obtenir le cablage suivant. Pour cela vous allez avoir besoin de headers 3 paires de 2, de jumpers de tailles différentes, d'un transistor IRLZ44N et d'une résistance de 20 MΩ (Cette résistance peut être inférieure mais dans notre cas cela fonctionne ainsi). Attention à bien orienter le transistor. Pour les plus connaisseurs le transistor est cablé de la manière suivante :
+L'objectif est d'obtenir le câblage comme sur la photo ci-dessous. Il faut le matériel suivant : des headers 3 paires de 2, des jumpers de tailles différentes, un transistor IRLZ44N et une résistance de 20 MΩ (Cette résistance peut être inférieure mais dans notre cas cela fonctionne bien comme ça). Attention à bien orienter le transistor. Pour les plus connaisseurs le transistor est cablé de la manière suivante :
 - La gate est connectée au port 2 de l'Arduino
 - Le drain est connecté à la masse du câble d'alimentation côté Raspberry
 - La source est connecté à la masse du câble d'alimentation côté Powerbank
-<img src="https://user-images.githubusercontent.com/93132152/175060345-7b7bb528-75c4-4879-9978-2994f500e2d5.png">
+<img src="https://user-images.githubusercontent.com/93132152/175060345-7b7bb528-75c4-4879-9978-2994f500e2d5.png" width=50% height=50%>
 
 ## 3.2 Cablage des alimentations
+Une fois la breadboard assemblée, connecter les alimentations et le raspberry pi de la manière suivante.
+<img src="https://user-images.githubusercontent.com/93132152/177129906-5c14ac73-49e1-40c9-86d5-b409883ce761.png" width=50% height=50%>
+
+
+Pour effectuer l'alimentation du Raspberry il faut sectionner le cable USB d'alimentation pour accéder aux câbles d'alimentation (rouge et noir).
+Pour brancher les câbles d'alimentation sur la breadboard il faut sertir des connecteurs JST femelle dessus, denombreux tutoriel sont disponibles en ligne pour apprendre à réaliser ces sertissages.
+
+Le câblage final ressemble à ceci : 
+
+<img src="https://user-images.githubusercontent.com/93132152/177128194-5962b5a6-2418-4f7a-bc7e-1afe850e5d92.jpg" width=50% height=50%>
+
+La partie fonctionnelle de l'Agrocam est terminée. Il reste à faire le montage dont le tutoriel se situe [ici](https://github.com/Mobilab-AgroTIC/Agrocam/blob/main/3D%20files/README.md)
