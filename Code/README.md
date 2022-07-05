@@ -8,7 +8,10 @@ Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspb
 
 # 1. Programmer l'Agrocam 
 ## 1.1. Paramétrer le dongle 4G
-Suivre la notice d'utilisation du dongle pour éditer son SSID et son mot de passe. Ces deux informations sont à conserver pour établir la connexion entre le Raspberry et le dongle.
+Avant d'insérer la carte SIM dans le Dongle 4G, assurez vous d'avoir supprimer le code PIN. Pour retirer le code PIN de la carte SIM il faut insérer la carte dans un téléphone et se rendre dans les paramètres de ce dernier pour désactiver la sécurité.
+
+Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son mot de passe. Le SSID et mot de passe par défaut peuvent aussi être laissé tels quels. Ces deux informations (SSID et mot de passe) sont à conserver pour établir la connexion entre le Raspberry et le dongle par la suite.
+
 ## 1.2. Initialiser le Raspberry Pi
 - Installer Raspberry Pi imager https://www.raspberrypi.com/software/
 - Ouvrir Raspberry Pi imager
