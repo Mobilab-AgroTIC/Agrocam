@@ -44,6 +44,12 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
+import smbus
+
+bus = smbus.SMBus(1)
+voltageInt=bus.read_byte_data(0x69,1)
+voltageDec=bus.read_byte_data(0x69,2)
+
 now = datetime.now()
 current_date = now.strftime("%Y-%m-%d_%H%M%S")
 
@@ -56,7 +62,7 @@ password=os.environ.get('password')
 
 session = ftplib.FTP(hostname,user,password)
 file = open('/home/pi/Agrocam/temp.jpg','rb')
-session.storbinary('STOR /img/dev1_'+ current_date +'.jpg', file)
+session.storbinary('STOR /img/dev1_'+ current_date +'_'+voltageInt+'_'+voltageDec+'.jpg', file)
 file.close()
 session.quit()
 
