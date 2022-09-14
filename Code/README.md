@@ -1,4 +1,10 @@
-Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et l'Arduino promini 3,3 V. Le tutoriel est découpé en 3 grandes étapes : 
+Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et la carte Witty Pi 3. 
+
+Vous devriez avoir le matériel suivant : 
+
+<img src="https://user-images.githubusercontent.com/93132152/190139861-a0678fe1-11a7-469f-9545-627c0b963aad.png" width=30% height=30%>
+
+Le tutoriel est découpé en 3 grandes étapes : 
 
 **1. Programmer l'Agrocam**
 
@@ -193,12 +199,16 @@ Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous al
 | Vout adjustment  | Inchangé  |
 | Iout adjustment  | Inchangé  |
 
-4. ```5. Schedule next startup``` taper 5 et entrer. Ensuite taper la chaine de caractère correspondant à votre fréquence d'acquisition. Exemple ```?? 12:00:00``` pour déclencher tous les jours à midi ou ```?? ??:15:00``` pour tous les jours et toutes les heures à la 15e minute. Pour faire plusieurs démarrage en une journée il faudra faire un paramétrage plus xomple. Voir le [guide d'utilisateur](https://www.uugear.com/doc/WittyPi3_UserManual.pdf) de la carte qui est très bien fait.
+4. ```5. Schedule next startup``` taper 5 et entrer. Ensuite taper la chaine de caractère correspondant à votre fréquence d'acquisition. Exemple ```?? 12:00:00``` pour déclencher tous les jours à midi ou ```?? ??:15:00``` pour tous les jours et toutes les heures à la 15e minute. Pour faire plusieurs démarrages en une journée il faudra faire un paramétrage plus complexe. Voir le [guide d'utilisateur](https://www.uugear.com/doc/WittyPi3_UserManual.pdf) de la carte qui est très bien fait.
 
 5. ```11. Exit``` taper 11 et entrer
 
 ## 2.3 Tester l'Agrocam
 Une fois ces étapes terminées. Eteindre l'Agrocam ```sudo shutdown -h now ``` puis repositionner le cavalier en position initiale.
-Vous pouvez débrancher l'alimentation et connecter les cellules Li-ion comme sur la photo ci-dessous.
+Vous pouvez débrancher l'alimentation et connecter les cellules Li-ion comme sur la photo ci-dessous. Cette [vidéo](https://www.youtube.com/watch?v=nqwYTafg8Z0) vous explique comment réaliser la connectique mâle du XH2.54 sur les fils du boitier d'alimentation.
 
-Enfin pour tester le cadrage vous pouvez appuyer à n'importe quel moment sur le bouton oussoir de la Witty Pi 3 pour faire une photo. La cémra démarrera automatiquement à l'heure prédéfinie.
+
+<img src="https://user-images.githubusercontent.com/93132152/190140109-795cd432-3d9a-4398-b5f2-6af661773ff9.png" width=30% height=30%>
+
+
+Enfin pour tester le cadrage vous pouvez appuyer à n'importe quel moment sur le bouton poussoir de la Witty Pi 3 pour faire une photo. La caméra démarrera automatiquement à l'heure prédéfinie.
