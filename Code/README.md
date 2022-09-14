@@ -121,7 +121,7 @@ user = ""
 password =""
 ```
 
-## 1.8. Démarrer la script au reboot
+## 1.8. Démarrer le script au reboot
 Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 24 au 3,3v pour que l'Agrocam reste allumée _cf. partie 1.10._
 
 Ouvrir le crontab 
