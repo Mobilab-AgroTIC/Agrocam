@@ -1,4 +1,10 @@
-Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et l'Arduino promini 3,3 V. Le tutoriel est découpé en 3 grandes étapes : 
+Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et la carte Witty Pi 3. 
+
+Vous devriez avoir le matériel suivant : 
+
+<img src="https://user-images.githubusercontent.com/93132152/190139861-a0678fe1-11a7-469f-9545-627c0b963aad.png" width=30% height=30%>
+
+Le tutoriel est découpé en 3 grandes étapes : 
 
 **1. Programmer l'Agrocam**
 
@@ -121,7 +127,7 @@ user = ""
 password =""
 ```
 
-## 1.8. Démarrer la script au reboot
+## 1.8. Démarrer le script au reboot
 Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 24 au 3,3v pour que l'Agrocam reste allumée _cf. partie 1.10._
 
 Ouvrir le crontab 
@@ -161,9 +167,48 @@ A partir de cette étape, cette branche diffère fortement de la branche main. O
 ## 2.1 Connecter la carte WittyPi 3 au Raspberry
 Insérer une pile 3V (si possible rechargeable et fourni avec la carte WittyPi 3) dans l'emplacement prévu à cette effet sur la carte Witty Pi
 
-Les broches s'emboitent de la manière suivante (il faut bien évidemment débrancher les fils du servomoteur ainsi que le cavalier avant ça).
+Les broches s'emboitent de la manière suivante. Il faut bien évidemment débrancher les fils du servomoteur ainsi que le cavalier avant ça.
+<img src="https://user-images.githubusercontent.com/93132152/190118339-fec7ef4e-e2d0-4b9b-aaef-bf1d2e3ed315.jpg" width=30% height=30%>
 
+Enfin repositionner les fils et le cavalier aux mêmes emplacement 
+Le dongle 4G reste au même endroit
 
 ## 2.2 Paramétrer le WittyPi
+Brancher l'alimentation électrique directement sur la carte Witty Pi (elle n'est donc plus branchée sur le Raspberry)
+<img src="https://user-images.githubusercontent.com/93132152/190120731-c1db55e8-244e-47c9-91a6-cc89e46e95bd.png" width=30% height=30%>
 
-## 2.3 Réaliser les branchements sur la carte Witty Pi
+Positionner le cavalier en position débug (port GPIO 24 connecté au 3,3V) et allumer l'Agrocam en appuyant sur le bouton poussoir de la carte Witty Pi
+
+Se connecter au Raspberry comme au 1.5 et ouvrir le termilan de commande :
+```
+sudo ./wittypi/wittyPi.sh
+```
+Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous allons procéder ainsi :
+1. ```3.Synchronize time``` taper 3 et entrer
+2. ```7. Set low voltage threshold``` taper 7 et entrer puis saisir 6,5V et entrer
+3. ```9. View/change other settings...``` taper 9 et entrer. Ensuite suivre les instructions pour chaque paramètre. Attention lorsqu'un paramètre est validé on revient au menu initial, il faut donc revenir dans ```9. View/change other settings...```
+
+| Paramètre  | Valeur |
+| ------------- | ------------- |
+| Default state when powered  | OFF  |
+| Power cut delay after shutdown  | Inchangé  |
+| Pulsing interval during sleep  | 8  |
+| White LED duration  | 0  |
+| Dummy load duration  | 0  |
+| Vin adjustment | Inchangé  |
+| Vout adjustment  | Inchangé  |
+| Iout adjustment  | Inchangé  |
+
+4. ```5. Schedule next startup``` taper 5 et entrer. Ensuite taper la chaine de caractère correspondant à votre fréquence d'acquisition. Exemple ```?? 12:00:00``` pour déclencher tous les jours à midi ou ```?? ??:15:00``` pour tous les jours et toutes les heures à la 15e minute. Pour faire plusieurs démarrages en une journée il faudra faire un paramétrage plus complexe. Voir le [guide d'utilisateur](https://www.uugear.com/doc/WittyPi3_UserManual.pdf) de la carte qui est très bien fait.
+
+5. ```11. Exit``` taper 11 et entrer
+
+## 2.3 Tester l'Agrocam
+Une fois ces étapes terminées. Eteindre l'Agrocam ```sudo shutdown -h now ``` puis repositionner le cavalier en position initiale.
+Vous pouvez débrancher l'alimentation et connecter les cellules Li-ion comme sur la photo ci-dessous. Cette [vidéo](https://www.youtube.com/watch?v=nqwYTafg8Z0) vous explique comment réaliser la connectique mâle du XH2.54 sur les fils du boitier d'alimentation.
+
+
+<img src="https://user-images.githubusercontent.com/93132152/190140109-795cd432-3d9a-4398-b5f2-6af661773ff9.png" width=30% height=30%>
+
+
+Enfin pour tester le cadrage vous pouvez appuyer à n'importe quel moment sur le bouton poussoir de la Witty Pi 3 pour faire une photo. La caméra démarrera automatiquement à l'heure prédéfinie.
