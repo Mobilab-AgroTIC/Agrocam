@@ -14,6 +14,7 @@ gpio -g pwm 18 90
 
 #take picture
 mkdir -p /home/pi/Agrocam
+sleep 10
 libcamera-jpeg -o /home/pi/Agrocam/temp.jpg
 
 echo "shooting done.";
