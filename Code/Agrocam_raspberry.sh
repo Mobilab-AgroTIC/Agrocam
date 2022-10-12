@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "hello World !";
-
+echo "Today is $(date)"
 # Shtudown HDMI port (battery saver)
 sudo tvservice --off
 
@@ -24,19 +24,18 @@ sleep 2
 gpio -g pwm 18 180
 
 # Connection check. Turn off after 1min if no connection.
-STATE="error";
-COUNTER=0;
-while [  $STATE == "error" ]; do
-    STATE=$(ping -q -w 1 -c 1 `ip r | grep default | cut -d ' ' -f 3` > /dev/null && echo ok || echo error)
-    sleep 2
-		COUNTER+=1;
-		echo "connection try : " $COUNTER "/30";
-		if [[ $COUNTER > 30 ]]; then
-			echo "No connection. shutdown...";
-			sudo shutdown -h now
-		fi
- done
-
+# STATE="error";
+# COUNTER=0;
+# while [  $STATE == "error" ]; do
+#    STATE=$(ping -q -w 1 -c 1 `ip r | grep default | cut -d ' ' -f 3` > /dev/null && echo ok || echo error)
+#    sleep 2
+#		COUNTER+=1;
+#		echo "connection try : " $COUNTER "/30";
+#		if [[ $COUNTER > 30 ]]; then
+#			echo "No connection. shutdown...";
+#			sudo shutdown -h now
+#		fi
+# done
 # Rename and send image
 python << END_OF_PYTHON
 import ftplib
