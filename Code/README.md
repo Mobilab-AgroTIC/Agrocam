@@ -26,7 +26,7 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 - Dans les paramètres <img src="https://user-images.githubusercontent.com/93132152/169275716-50c48613-8d7e-4b10-8681-f49c881cf00c.png" width=4% height=4%>:
     - Activer le SSH
     - Définir un mot de passe pour le Raspberry et un nom d'utilisateur (conserver "pi")
-    - Définir les paramètres Wifi (SSID, Password, pays (FR)) du dongle 4G. ** Bien penser à au paramètre "FR"**
+    - Définir les paramètres Wifi (SSID, Password, pays (FR)) du dongle 4G. ** Bien penser à modifier le paramètre Wireless LAN country avec "FR"**
 <img src="https://user-images.githubusercontent.com/93132152/169276815-ce32ffe7-997c-40b8-b6e8-bc613ae2f673.png" width=30% height=30%>
 - Cliquer sur "save" puis sur "écrire"
 - L'écriture peut prendre du temps, n'hésitez pas à faire les installations de la partie 3 en attendant
