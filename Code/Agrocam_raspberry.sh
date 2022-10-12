@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "hello World !";
-echo "Today is $(date)"
+
 # Shtudown HDMI port (battery saver)
 sudo tvservice --off
 
@@ -14,7 +14,6 @@ gpio -g pwm 18 90
 
 #take picture
 mkdir -p /home/pi/Agrocam
-sleep 10
 libcamera-jpeg -o /home/pi/Agrocam/temp.jpg
 
 echo "shooting done.";
@@ -24,18 +23,19 @@ sleep 2
 gpio -g pwm 18 180
 
 # Connection check. Turn off after 1min if no connection.
-# STATE="error";
-# COUNTER=0;
-# while [  $STATE == "error" ]; do
-#    STATE=$(ping -q -w 1 -c 1 `ip r | grep default | cut -d ' ' -f 3` > /dev/null && echo ok || echo error)
-#    sleep 2
-#		COUNTER+=1;
-#		echo "connection try : " $COUNTER "/30";
-#		if [[ $COUNTER > 30 ]]; then
-#			echo "No connection. shutdown...";
-#			sudo shutdown -h now
-#		fi
-# done
+STATE="error";
+COUNTER=0;
+while [  $STATE == "error" ]; do
+    STATE=$(ping -q -w 1 -c 1 `ip r | grep default | cut -d ' ' -f 3` > /dev/null && echo ok || echo error)
+    sleep 2
+		COUNTER+=1;
+		echo "connection try : " $COUNTER "/30";
+		if [[ $COUNTER > 30 ]]; then
+			echo "No connection. shutdown...";
+			sudo shutdown -h now
+		fi
+ done
+
 # Rename and send image
 python << END_OF_PYTHON
 import ftplib
@@ -43,12 +43,6 @@ import RPi.GPIO as GPIO
 import os
 from datetime import datetime
 from dotenv import load_dotenv
-
-import smbus
-
-bus = smbus.SMBus(1)
-voltageInt=bus.read_byte_data(0x69,1)
-voltageDec=bus.read_byte_data(0x69,2)
 
 now = datetime.now()
 current_date = now.strftime("%Y-%m-%d_%H%M%S")
@@ -62,7 +56,7 @@ password=os.environ.get('password')
 
 session = ftplib.FTP(hostname,user,password)
 file = open('/home/pi/Agrocam/temp.jpg','rb')
-session.storbinary('STOR /img/dev1_'+ current_date +'_'+voltageInt+'_'+voltageDec+'.jpg', file)
+session.storbinary('STOR /img/dev1_'+ current_date +'.jpg', file)
 file.close()
 session.quit()
 
