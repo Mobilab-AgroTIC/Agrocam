@@ -1,14 +1,10 @@
-Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et la carte Witty Pi 3. 
-
-Vous devriez avoir le matériel suivant : 
-
-<img src="https://user-images.githubusercontent.com/93132152/190139861-a0678fe1-11a7-469f-9545-627c0b963aad.png" width=30% height=30%>
-
-Le tutoriel est découpé en 3 grandes étapes : 
+Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et l'Arduino promini 3,3 V. Le tutoriel est découpé en 3 grandes étapes : 
 
 **1. Programmer l'Agrocam**
 
 **2. Programmer l'allumage de l'Agrocam**
+
+**3. Réaliser le montage électronique**
 
 # 1. Programmer l'Agrocam 
 ## 1.1. Paramétrer le dongle 4G
@@ -84,20 +80,6 @@ pip install python-dotenv
 sudo cp -R /home/pi/.local/lib/python3.9/site-packages/dotenv /usr/lib/python3.9 
 ```
 *On déplace la librairie pour qu'elle soit trouvée en démarrage automatique*
-
-### 1.6.4 Installer WittyPi
-```
-wget http://www.uugear.com/repo/WittyPi3/install.sh
-sudo sh install.sh
-```
-### 1.6.5 Installer smbus
-```
-pip install smbus
-sudo cp -R /home/pi/.local/lib/python3.9/site-packages/smbus.cpython-39-arm-linux-gnueabihf.so /usr/lib/python3.9
-sudo cp -R /home/pi/.local/lib/python3.9/site-packages/smbus-1.1.post2.dist-info/ /usr/lib/python3.9
-```
-*On déplace la librairie pour qu'elle soit trouvée en démarrage automatique*
-
 ## 1.7. Ajouter les fichiers sur le raspberry pi
 Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
 ### 1.7.1 Le script de l'Agrocam
@@ -127,7 +109,7 @@ user = ""
 password =""
 ```
 
-## 1.8. Démarrer le script au reboot
+## 1.8. Démarrer la script au reboot
 Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 24 au 3,3v pour que l'Agrocam reste allumée _cf. partie 1.10._
 
 Ouvrir le crontab 
@@ -162,53 +144,55 @@ END_OF_PYTHON
 ```
 
 # 2. Programmer l'allumage de l'Agrocam
-A partir de cette étape, cette branche diffère fortement de la branche main. On va pouvoir paramétrer l'allumage du raspberry grâce à la carte Witty Pi 3
+On va se servir d'un arduino mini pour alimenter le Raspberry à intervalles régulier (et donc prendre une photo). L'arduino active un transistor qui lui même connecte le raspberry à une power bank _(cf. schéma en partie 3)_ 
+- Installer le logiciel [Arduino](https://www.arduino.cc/en/software)
+## 2.1 Brancher l'Arduino au PC
+- Utiliser un FTDI pour relier l'Arduino mini au PC. S'il s'agit d'un Arduino mini 3,3 V penser à ce que le FTDI soit sur la position 3,3V (boutou ou cavalier selon les modèles)
+<img src="https://user-images.githubusercontent.com/93132152/170056873-bf504cc6-de3e-4f86-b064-992f53fd7af1.png"  width=20% height=20%>
 
-## 2.1 Connecter la carte WittyPi 3 au Raspberry
-Insérer une pile 3V (si possible rechargeable et fourni avec la carte WittyPi 3) dans l'emplacement prévu à cette effet sur la carte Witty Pi
+- Attention au sens de branchement du FTDI, les broches VCC, GND doivent coïncider. De même RX doit être branché sur TX et inversement :
+<img src="https://user-images.githubusercontent.com/93132152/170057494-17264b12-1341-4d30-bbc1-56be233e0f04.jpg"  width=20% height=20%>
 
-Les broches s'emboitent de la manière suivante. Il faut bien évidemment débrancher les fils du servomoteur ainsi que le cavalier avant ça.
-<img src="https://user-images.githubusercontent.com/93132152/190118339-fec7ef4e-e2d0-4b9b-aaef-bf1d2e3ed315.jpg" width=30% height=30%>
+- Dans le logiciel Arduino, dans ```Outil > Type de carte``` sélectionner la carte **"Arduino Pro or Pro Mini"**
+- Puis sélectionner le port qui s'est ajouté à la liste en branchant le cable USB (celui relié au FTDI) à l'ordinateur, dans ```Outil > Port```
+<img src="https://user-images.githubusercontent.com/93132152/170059933-924f515d-7931-45b7-b47e-672c3da757bc.png"  width=20% height=20%>
 
-Enfin repositionner les fils et le cavalier aux mêmes emplacement 
-Le dongle 4G reste au même endroit
+## 2.2 Téléverser le script 
+- Depuis Github copier le script Agrocam_arduino.ino et le coller dans le logiciel Arduino.
+- Sauvegarder et téléverser le script :<img src="https://user-images.githubusercontent.com/93132152/170060569-35ab2f8e-8374-4a47-8603-4ba0fc10ead4.png" width=2% height=2%>
 
-## 2.2 Paramétrer le WittyPi
-Brancher l'alimentation électrique directement sur la carte Witty Pi (elle n'est donc plus branchée sur le Raspberry)
-<img src="https://user-images.githubusercontent.com/93132152/190120731-c1db55e8-244e-47c9-91a6-cc89e46e95bd.png" width=30% height=30%>
-
-Positionner le cavalier en position débug (port GPIO 24 connecté au 3,3V) et allumer l'Agrocam en appuyant sur le bouton poussoir de la carte Witty Pi
-
-Se connecter au Raspberry comme au 1.5 et ouvrir le termilan de commande :
+## 2.3 Modifier la fréquence d'acquisition d'image
+Par défaut le script va lancer l'allumage approximativement toutes les 8h mais il est possible de modifier cette durée. Pour cela :
+- ouvrir le script
+- Trouver la boucle :
 ```
-sudo ./wittypi/wittyPi.sh
+for (int i = 1; i <3600 ; i++){ //3600 pour 8h, 3150 avec le recalage
+      LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+  }
 ```
-Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous allons procéder ainsi :
-1. ```3.Synchronize time``` taper 3 et entrer
-2. ```7. Set low voltage threshold``` taper 7 et entrer puis saisir 6,5V et entrer
-3. ```9. View/change other settings...``` taper 9 et entrer. Ensuite suivre les instructions pour chaque paramètre. Attention lorsqu'un paramètre est validé on revient au menu initial, il faut donc revenir dans ```9. View/change other settings...```
 
-| Paramètre  | Valeur |
-| ------------- | ------------- |
-| Default state when powered  | OFF  |
-| Power cut delay after shutdown  | Inchangé  |
-| Pulsing interval during sleep  | 8  |
-| White LED duration  | 0  |
-| Dummy load duration  | 0  |
-| Vin adjustment | Inchangé  |
-| Vout adjustment  | Inchangé  |
-| Iout adjustment  | Inchangé  |
+- Modifier 3600 par une autre valeur. La boucle permet de mettre l'Arduino en sommeil pour 8 secondes, la durée totale sera donc un multiple de 8 secondes.
+- Téléverser une fois le script modifié
 
-4. ```5. Schedule next startup``` taper 5 et entrer. Ensuite taper la chaine de caractère correspondant à votre fréquence d'acquisition. Exemple ```?? 12:00:00``` pour déclencher tous les jours à midi ou ```?? ??:15:00``` pour tous les jours et toutes les heures à la 15e minute. Pour faire plusieurs démarrages en une journée il faudra faire un paramétrage plus complexe. Voir le [guide d'utilisateur](https://www.uugear.com/doc/WittyPi3_UserManual.pdf) de la carte qui est très bien fait.
+# 3. Réaliser le montage électronique
+L'objectif de cette partie est de modifier l'arrivée de courant du Raspberry pour que celle-ci soit contrôlée par l'Arduino Mini par l'intermédiaire du transistor IRLZ44N.
+## 3.1 Cablage sur la breadboard
+L'objectif est d'obtenir le câblage comme sur la photo ci-dessous. Il faut le matériel suivant : des headers 3 paires de 2, des jumpers de tailles différentes, un transistor IRLZ44N et une résistance de 20 MΩ (Cette résistance peut être inférieure mais dans notre cas cela fonctionne bien comme ça). Attention à bien orienter le transistor. Pour les plus connaisseurs le transistor est cablé de la manière suivante :
+- La gate est connectée au port 2 de l'Arduino
+- Le drain est connecté à la masse du câble d'alimentation côté Raspberry
+- La source est connecté à la masse du câble d'alimentation côté Powerbank
+<img src="https://user-images.githubusercontent.com/93132152/175060345-7b7bb528-75c4-4879-9978-2994f500e2d5.png" width=50% height=50%>
 
-5. ```11. Exit``` taper 11 et entrer
-
-## 2.3 Tester l'Agrocam
-Une fois ces étapes terminées. Eteindre l'Agrocam ```sudo shutdown -h now ``` puis repositionner le cavalier en position initiale.
-Vous pouvez débrancher l'alimentation et connecter les cellules Li-ion comme sur la photo ci-dessous. Cette [vidéo](https://www.youtube.com/watch?v=nqwYTafg8Z0) vous explique comment réaliser la connectique mâle du XH2.54 sur les fils du boitier d'alimentation.
+## 3.2 Cablage des alimentations
+Une fois la breadboard assemblée, connecter les alimentations et le raspberry pi de la manière suivante.
+<img src="https://user-images.githubusercontent.com/93132152/177129906-5c14ac73-49e1-40c9-86d5-b409883ce761.png" width=50% height=50%>
 
 
-<img src="https://user-images.githubusercontent.com/93132152/190140109-795cd432-3d9a-4398-b5f2-6af661773ff9.png" width=30% height=30%>
+Pour effectuer l'alimentation du Raspberry il faut sectionner le cable USB d'alimentation pour accéder aux câbles d'alimentation (rouge et noir).
+Pour brancher les câbles d'alimentation sur la breadboard il faut sertir des connecteurs JST femelle dessus, denombreux tutoriel sont disponibles en ligne pour apprendre à réaliser ces sertissages.
 
+Le câblage final ressemble à ceci : 
 
-Enfin pour tester le cadrage vous pouvez appuyer à n'importe quel moment sur le bouton poussoir de la Witty Pi 3 pour faire une photo. La caméra démarrera automatiquement à l'heure prédéfinie.
+<img src="https://user-images.githubusercontent.com/93132152/177128194-5962b5a6-2418-4f7a-bc7e-1afe850e5d92.jpg" width=50% height=50%>
+
+La partie fonctionnelle de l'Agrocam est terminée. Il reste à faire le montage dont le tutoriel se situe [ici](https://github.com/Mobilab-AgroTIC/Agrocam/blob/main/3D%20files/README.md)
