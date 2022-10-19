@@ -85,12 +85,7 @@ sudo cp -R /home/pi/.local/lib/python3.9/site-packages/dotenv /usr/lib/python3.9
 ```
 *On déplace la librairie pour qu'elle soit trouvée en démarrage automatique*
 
-### 1.6.4 Installer WittyPi
-```
-wget http://www.uugear.com/repo/WittyPi3/install.sh
-sudo sh install.sh
-```
-### 1.6.5 Installer smbus
+### 1.6.4 Installer smbus
 ```
 pip install smbus
 sudo cp -R /home/pi/.local/lib/python3.9/site-packages/smbus.cpython-39-arm-linux-gnueabihf.so /usr/lib/python3.9
@@ -164,7 +159,15 @@ END_OF_PYTHON
 # 2. Programmer l'allumage de l'Agrocam
 A partir de cette étape, cette branche diffère fortement de la branche main. On va pouvoir paramétrer l'allumage du raspberry grâce à la carte Witty Pi 3
 
-## 2.1 Connecter la carte WittyPi 3 au Raspberry
+## 2.1 Installer WittyPi
+Redémarrer le Raspberry avec le cavalier en position débugage _(cf. 1.10.)_
+Installer WittyPi avec les lignes de commandes suivantes.
+```
+wget http://www.uugear.com/repo/WittyPi3/install.sh
+sudo sh install.sh
+```
+Puis éteindre le raspberry avec ```sudo shutdown -h now``` puis passer à l'étape d'après.
+## 2.2 Connecter la carte WittyPi 3 au Raspberry
 Insérer une pile 3V (si possible rechargeable et fourni avec la carte WittyPi 3) dans l'emplacement prévu à cette effet sur la carte Witty Pi
 
 Les broches s'emboitent de la manière suivante. Il faut bien évidemment débrancher les fils du servomoteur ainsi que le cavalier avant ça.
@@ -173,8 +176,8 @@ Les broches s'emboitent de la manière suivante. Il faut bien évidemment débra
 Enfin repositionner les fils et le cavalier aux mêmes emplacement 
 Le dongle 4G reste au même endroit
 
-## 2.2 Paramétrer le WittyPi
-Brancher l'alimentation électrique directement sur la carte Witty Pi (elle n'est donc plus branchée sur le Raspberry)
+## 2.3 Paramétrer le WittyPi
+Brancher l'alimentation électrique directement sur la carte Witty Pi (elle n'est donc plus branchée sur le Raspberry).
 <img src="https://user-images.githubusercontent.com/93132152/190120731-c1db55e8-244e-47c9-91a6-cc89e46e95bd.png" width=30% height=30%>
 
 Positionner le cavalier en position débug (port GPIO 24 connecté au 3,3V) et allumer l'Agrocam en appuyant sur le bouton poussoir de la carte Witty Pi
@@ -203,7 +206,7 @@ Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous al
 
 5. ```11. Exit``` taper 11 et entrer
 
-## 2.3 Tester l'Agrocam
+## 2.4 Tester l'Agrocam
 Une fois ces étapes terminées. Eteindre l'Agrocam ```sudo shutdown -h now ``` puis repositionner le cavalier en position initiale.
 Vous pouvez débrancher l'alimentation et connecter les cellules Li-ion comme sur la photo ci-dessous. Cette [vidéo](https://www.youtube.com/watch?v=nqwYTafg8Z0) vous explique comment réaliser la connectique mâle du XH2.54 sur les fils du boitier d'alimentation.
 
