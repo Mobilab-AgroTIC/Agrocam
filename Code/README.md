@@ -4,13 +4,7 @@ Vous devriez avoir le matériel suivant :
 
 <img src="https://user-images.githubusercontent.com/93132152/190139861-a0678fe1-11a7-469f-9545-627c0b963aad.png" width=30% height=30%>
 
-Le tutoriel est découpé en 3 grandes étapes : 
-
-**1. Programmer l'Agrocam**
-
-**2. Programmer l'allumage de l'Agrocam**
-
-# 1. Programmer l'Agrocam 
+# 1. Préparer le raspberry l'Agrocam 
 ## 1.1. Paramétrer le dongle 4G
 Avant d'insérer la carte SIM dans le Dongle 4G, assurez vous d'avoir supprimer le code PIN. Pour retirer le code PIN de la carte SIM il faut insérer la carte dans un téléphone et se rendre dans les paramètres de ce dernier pour désactiver la sécurité.
 
@@ -40,11 +34,6 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 - Brancher la Picam. Attention au sens de branchement de la nappe de cable _(cf. photo ci-dessous)_. Attention les connecteurs sont fragiles, à manipuler avec précautions.
 <img src="https://www.raspberrypi.com/app/uploads/2016/05/2016-05-15-16.32.19-768x576.jpg" width=20% height=20%>
 
-- Brancher le servo moteur sur les broches du Raspberry. Le fil rouge du servo est relié à une **broche 5V**, le fil noir à une **broche GND**, et le fil restant (blanc, jaune) à la **broche GPIO 18** _cf.figures ci-dessous_
-- Connecter les **broches GPIO 24 et GND** à l'aide d'un [cavalier](https://fr.rs-online.com/web/p/cavaliers-et-shunts/2518682?cm_mmc=FR-PLA-DS3A-_-google-_-CSS_FR_FR_Connecteurs_Whoop-_-(FR:Whoop!)+Cavaliers+et+Shunts+(2)-_-2518682&matchtype=&pla-321137858785&gclid=Cj0KCQjwhLKUBhDiARIsAMaTLnFPSjXNxxk7wiwrSQBFsIqT5VfPuMc_Ay4DvPVhzphmNF9wRRBNoIkaAl6-EALw_wcB&gclsrc=aw.ds)_(cf.figures ci-dessous_). Dans cette position l'Agrocam fonctionnera normalement, c'est à dire qu'elle s'éteindra après avoir pris une photo. Pour empêcher cela on peut basculer le cavalier entre la **broche 3,3V** et la **broche GPIO 24** ainsi l'Agrocam ne s'éteint pas et il est possible d'en prendre le contrôle (partie 1.5.). Dans la suite du tutoriel nous pouvons laisser le cavalier en position "normale" (entre GPIO 24 et GND) car la procédure d'exctinction n'a pa encore été implémentée à ce stade.
-
-<img src="https://user-images.githubusercontent.com/93132152/170041886-8d5a046a-65c0-40ad-a286-e73cacb53113.png" width=20% height=20%>   <img src="https://user-images.githubusercontent.com/93132152/170041244-7e861340-61f8-4499-b359-bddf76874c6b.jpg" width=30% height=30%>
-
 - Brancher le dongle 4G au Raspberry sur le port **"USB"** _cf. photo ci-dessous_
 - Brancher l'alimentation sur le port **"PWR IN"** _cf. photo ci-dessous_
 <img src="https://user-images.githubusercontent.com/93132152/169502193-72963340-17c8-46ee-b322-8d32348ea31f.png"  width=30% height=30%>
@@ -59,7 +48,7 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 - Depuis WinSCP ouvrir Putty <img src="https://user-images.githubusercontent.com/93132152/170045029-048df6d8-c55e-4bcc-b4fd-a2b8707ec859.png"  width=2% height=2%>
 - Un terminal de commande s'ouvre et vous demande un mot de passe. Il s'agit toujours du même défini à la partie 2. Le mot de passe ne s'affiche pas mais appuyer su r "entrer" et ça marche.
 
-## 1.6. Configurer le raspberry 
+## 1.6. Installer les librairies 
 Les parties ci-dessous ne sont pas nécessaires mais il est possible que si le reste ne fonctionne pas, le problème vienne de là.
 **Si la caméra ne marche pas**, ouvrir les paramètres ```sudo raspi-config``` puis suivre les étapes : ```3 Interface Options/I1 Legacy Camera/YES/Finish/RebootYes```
 
@@ -93,74 +82,10 @@ sudo cp -R /home/pi/.local/lib/python3.9/site-packages/smbus-1.1.post2.dist-info
 ```
 *On déplace la librairie pour qu'elle soit trouvée en démarrage automatique*
 
-## 1.7. Ajouter les fichiers sur le raspberry pi
-Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
-### 1.7.1 Le script de l'Agrocam
-Glisser déposer Agrocam_raspberry.sh dans /home/pi
-
-Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
-```
-chmod 777 Agrocam_raspberry.sh
-sed -i -e 's/\r$//' Agrocam_raspberry.sh
-```
-**Attention :** Le script Agrocam_raspberry.sh contient ```sudo shutdown -h now``` à la fin qui éteint l'Agrocam. Pour débugger le script (c'est-à-dire reprendre la main dessus) il est recommandé de commenter cette ligne _cf. partie 1.10_
-
-### 1.7.2 Les variables d'environnement
-Maintenant on va déposer dans un fichier séparé du script les variables qui permettent de se connecter au serveur FTP où seront envoyées et stockées les photos.
-
-Depuis WinSCP, glisser déposer .env dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. Attention le fichier peut être caché
-
-Le fichier peut aussi être crée depuis le terminal :
-```
-touch .env
-sudo nano .env
-```
-Contenu de .env
-```
-hostname = ""
-user = ""
-password =""
-```
-
-## 1.8. Démarrer le script au reboot
-Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 24 au 3,3v pour que l'Agrocam reste allumée _cf. partie 1.10._
-
-Ouvrir le crontab 
-```
-sudo crontab -e
-```
-Puis sélectionner ```1. /bin/nano``` en tapant ```1```
-Ajouter une ligne à la fin du crontab :
-```
-@reboot sudo /home/pi/Agrocam_raspberry.sh 
-```
-Ajouter ```>> /var/log/Agrocam.log 2>&1``` à la ligne précédente pour créer un fichier de log pour débugger
-
-## 1.9. Tester le script
-Pour relancer le raspberry : ```sudo reboot```, il devrait s'allumer, actionner le servomoteur, prendre une photo, réactionner le servomoteur, envoyer la photo sur le serveur et enfin s'éteindre.
-
-## 1.10. Debugger l'Agrocam
-Le script ```Agrocam_raspberry.sh``` éteint l'Agrocam à la fin de son exécution, une fois cette partie 1 terminée il serait donc impossible de se connecter au raspberry en SSH car le script ```Agrocam_raspberry.sh``` est lancé à chaque démarrage _(cf. partie 1.8)_. La solution consiste donc à empêcher que le script n'aille jusqu'au bout lorsqu'on le désire. Pour celà il y a une boucle en python à la fin du script qui tourne indéfiniement si le port GPIO 24 est "TRUE" donc connecté au 3,3V **(à l'aide du cavalier)**:
-```
-python << END_OF_PYTHON
-import time
-import RPi.GPIO as GPIO
-controlPin=24
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(controlPin, GPIO.IN)
-i=1
-while (GPIO.input(controlPin) == 1) :
-	time.sleep(5)
-	print("ControlPin is not LOW. i = ", i)
-	i += 1
-END_OF_PYTHON
-```
-
-# 2. Programmer l'allumage de l'Agrocam
+# 2. Programmer l'allumage de l'Agrocam avec la carte WittyPi
 A partir de cette étape, cette branche diffère fortement de la branche main. On va pouvoir paramétrer l'allumage du raspberry grâce à la carte Witty Pi 3
 
 ## 2.1 Installer WittyPi
-Redémarrer le Raspberry avec le cavalier en position débugage _(cf. 1.10.)_
 Installer WittyPi avec les lignes de commandes suivantes.
 ```
 wget http://www.uugear.com/repo/WittyPi3/install.sh
@@ -173,16 +98,12 @@ Insérer une pile 3V (si possible rechargeable et fourni avec la carte WittyPi 3
 Les broches s'emboitent de la manière suivante. Il faut bien évidemment débrancher les fils du servomoteur ainsi que le cavalier avant ça.
 <img src="https://user-images.githubusercontent.com/93132152/190118339-fec7ef4e-e2d0-4b9b-aaef-bf1d2e3ed315.jpg" width=30% height=30%>
 
-Enfin repositionner les fils et le cavalier aux mêmes emplacement 
-Le dongle 4G reste au même endroit
 
 ## 2.3 Paramétrer le WittyPi
 Brancher l'alimentation électrique directement sur la carte Witty Pi (elle n'est donc plus branchée sur le Raspberry).
 <img src="https://user-images.githubusercontent.com/93132152/190120731-c1db55e8-244e-47c9-91a6-cc89e46e95bd.png" width=30% height=30%>
 
-Positionner le cavalier en position débug (port GPIO 24 connecté au 3,3V) et allumer l'Agrocam en appuyant sur le bouton poussoir de la carte Witty Pi
-
-Se connecter au Raspberry comme au 1.5 et ouvrir le termilan de commande :
+Se connecter au Raspberry comme au 1.5 et ouvrir le terminal de commande :
 ```
 sudo ./wittypi/wittyPi.sh
 ```
@@ -206,6 +127,73 @@ Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous al
 
 5. ```11. Exit``` taper 11 et entrer
 
+# 3 Finaliser les branchements
+- Brancher le servo moteur sur les broches du WittyPi. Le fil rouge du servo est relié à une **broche 5V**, le fil noir à une **broche GND**, et le fil restant (blanc, jaune) à la **broche GPIO 18** _cf.figures ci-dessous_
+- Connecter les **broches GPIO 24 et GND** à l'aide d'un [cavalier](https://fr.rs-online.com/web/p/cavaliers-et-shunts/2518682?cm_mmc=FR-PLA-DS3A-_-google-_-CSS_FR_FR_Connecteurs_Whoop-_-(FR:Whoop!)+Cavaliers+et+Shunts+(2)-_-2518682&matchtype=&pla-321137858785&gclid=Cj0KCQjwhLKUBhDiARIsAMaTLnFPSjXNxxk7wiwrSQBFsIqT5VfPuMc_Ay4DvPVhzphmNF9wRRBNoIkaAl6-EALw_wcB&gclsrc=aw.ds)_(cf.figures ci-dessous_). Dans cette position l'Agrocam fonctionnera normalement, c'est à dire qu'elle s'éteindra après avoir pris une photo. Pour empêcher cela on peut basculer le cavalier entre la **broche 3,3V** et la **broche GPIO 24** ainsi l'Agrocam ne s'éteint pas et il est possible d'en prendre le contrôle (partie 7).
+
+<img src="https://user-images.githubusercontent.com/93132152/170041886-8d5a046a-65c0-40ad-a286-e73cacb53113.png" width=20% height=20%>   <img src="https://user-images.githubusercontent.com/93132152/170041244-7e861340-61f8-4499-b359-bddf76874c6b.jpg" width=30% height=30%>
+# 4 Ajouter les fichiers sur le raspberry pi
+Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
+## 4.1 Le script de l'Agrocam
+Glisser déposer Agrocam_raspberry.sh dans /home/pi
+
+Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
+```
+chmod 777 Agrocam_raspberry.sh
+sed -i -e 's/\r$//' Agrocam_raspberry.sh
+```
+**Attention :** Le script Agrocam_raspberry.sh contient ```sudo shutdown -h now``` à la fin qui éteint l'Agrocam. Pour débugger le script (c'est-à-dire reprendre la main dessus) il est recommandé de commenter cette ligne _cf. partie 7_
+
+## 4.2 Les variables d'environnement
+Maintenant on va déposer dans un fichier séparé du script les variables qui permettent de se connecter au serveur FTP où seront envoyées et stockées les photos.
+
+Depuis WinSCP, glisser déposer .env dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. Attention le fichier peut être caché
+
+Le fichier peut aussi être crée depuis le terminal :
+```
+touch .env
+sudo nano .env
+```
+Contenu de .env
+```
+hostname = ""
+user = ""
+password =""
+```
+
+# 5 Démarrer le script au reboot
+Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 24 au 3,3v pour que l'Agrocam reste allumée _cf. partie 7._
+
+Ouvrir le crontab 
+```
+sudo crontab -e
+```
+Puis sélectionner ```1. /bin/nano``` en tapant ```1```
+Ajouter une ligne à la fin du crontab :
+```
+@reboot sudo /home/pi/Agrocam_raspberry.sh 
+```
+Ajouter ```>> /var/log/Agrocam.log 2>&1``` à la ligne précédente pour créer un fichier de log pour débugger
+
+# 6 Tester le script
+Pour relancer le raspberry : ```sudo reboot```, il devrait s'allumer, actionner le servomoteur, prendre une photo, réactionner le servomoteur, envoyer la photo sur le serveur et enfin s'éteindre.
+
+# 7 Debugger l'Agrocam
+Le script ```Agrocam_raspberry.sh``` éteint l'Agrocam à la fin de son exécution, une fois cette partie 1 terminée il serait donc impossible de se connecter au raspberry en SSH car le script ```Agrocam_raspberry.sh``` est lancé à chaque démarrage _(cf. partie 1.8)_. La solution consiste donc à empêcher que le script n'aille jusqu'au bout lorsqu'on le désire. Pour celà il y a une boucle en python à la fin du script qui tourne indéfiniement si le port GPIO 24 est "TRUE" donc connecté au 3,3V **(à l'aide du cavalier)**:
+```
+python << END_OF_PYTHON
+import time
+import RPi.GPIO as GPIO
+controlPin=24
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(controlPin, GPIO.IN)
+i=1
+while (GPIO.input(controlPin) == 1) :
+	time.sleep(5)
+	print("ControlPin is not LOW. i = ", i)
+	i += 1
+END_OF_PYTHON
+```
 ## 2.4 Tester l'Agrocam
 Une fois ces étapes terminées. Eteindre l'Agrocam ```sudo shutdown -h now ``` puis repositionner le cavalier en position initiale.
 Vous pouvez débrancher l'alimentation et connecter les cellules Li-ion comme sur la photo ci-dessous. Cette [vidéo](https://www.youtube.com/watch?v=nqwYTafg8Z0) vous explique comment réaliser la connectique mâle du XH2.54 sur les fils du boitier d'alimentation.
