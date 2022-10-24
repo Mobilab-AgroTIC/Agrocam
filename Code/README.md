@@ -14,6 +14,7 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 - Installer Raspberry Pi imager https://www.raspberrypi.com/software/
 - Ouvrir Raspberry Pi imager
 - Insérer la carte SD du raspberry dans le PC
+
 - Sélectionner l'espace de stockage correspondant à la carte SD et sélectionner l'OS : **Raspberry Pi OS Lite (32-bit)**
 <img src="https://user-images.githubusercontent.com/93132152/169273540-02b78e90-f551-4a8f-ac33-b90f7be4cffa.png" width=30% height=30%>  <img src="https://user-images.githubusercontent.com/93132152/169275055-28434132-3a4c-42e0-8752-84e8525d4922.png" width=30% height=30%>
 
@@ -95,18 +96,21 @@ wget http://www.uugear.com/repo/WittyPi3/install.sh
 sudo sh install.sh
 ```
 Puis éteindre le raspberry avec ```sudo shutdown -h now``` puis passer à l'étape d'après.
+Une fois le raspberry éteint, débrancher l'alimentation électrique.
+
 ## 2.2 Connecter la carte WittyPi 3 au Raspberry
 Insérer une pile 3V (si possible rechargeable et fourni avec la carte WittyPi 3) dans l'emplacement prévu à cette effet sur la carte Witty Pi
 
-Les broches s'emboitent de la manière suivante. Il faut bien évidemment débrancher les fils du servomoteur ainsi que le cavalier avant ça.
-<img src="https://user-images.githubusercontent.com/93132152/190118339-fec7ef4e-e2d0-4b9b-aaef-bf1d2e3ed315.jpg" width=30% height=30%>
+Les broches s'emboitent de la manière suivante.
 
+<img src="https://user-images.githubusercontent.com/93132152/197517482-6a5a1459-3894-4c51-946a-7dcf6b49754d.jpg" width=30% height=30%>
 
 ## 2.3 Paramétrer le WittyPi
-Brancher l'alimentation électrique directement sur la carte Witty Pi (elle n'est donc plus branchée sur le Raspberry).
-<img src="https://user-images.githubusercontent.com/93132152/190120731-c1db55e8-244e-47c9-91a6-cc89e46e95bd.png" width=30% height=30%>
+Brancher l'alimentation électrique directement sur la carte Witty Pi (l'alimentation du raspberry a été débranché en 2.1), c'est cette carte qui va ensuite gérer l'alimentation du raspberry. Pour que le raspberry démarre (en attendant qu'on lui donne un planing de mise en route), il faut appuyer sur le bouton poussoir de la carte Witty Pi. Lors de cette première mise en route, il est possible que le Dongle 4G ne s'allume pas. Il suffit de le débrancher et rebrancher.
 
-Se connecter au Raspberry comme au 1.5 et ouvrir le terminal de commande :
+<img src="https://user-images.githubusercontent.com/93132152/197518071-94065c91-ed4a-4cee-8cfb-99ead7fd86a6.jpg" width=30% height=30%>
+
+Se connecter au Raspberry comme dans la partie 1.5, ouvrir le terminal de commande et démarrer WittyPi avec la commande suivante :
 ```
 sudo ./wittypi/wittyPi.sh
 ```
@@ -130,11 +134,33 @@ Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous al
 
 5. ```11. Exit``` taper 11 et entrer
 
+## 2.4 Récupérer l'adresse I2C de la carte WittyPi
+Cette adresse est nécessaire pour la lecture de la tension de la batterie. Pour obtenir l'adresse, saisir la commande suivante :
+
+```
+i2cdetect -y 1
+```
+
+Il n'y a qu'une seule adresse qui est détectée, c'est celle du WittyPi, ici c'est l'adresse 0x08 :
+```
+0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:                         08 -- -- -- -- -- -- --
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+70: -- -- -- -- -- -- -- --
+```
+
 # 3 Finaliser les branchements
 - Brancher le servo moteur sur les broches du WittyPi. Le fil rouge du servo est relié à une **broche 5V**, le fil noir à une **broche GND**, et le fil restant (blanc, jaune) à la **broche GPIO 18** _cf.figures ci-dessous_
 - Connecter les **broches GPIO 24 et GND** à l'aide d'un [cavalier](https://fr.rs-online.com/web/p/cavaliers-et-shunts/2518682?cm_mmc=FR-PLA-DS3A-_-google-_-CSS_FR_FR_Connecteurs_Whoop-_-(FR:Whoop!)+Cavaliers+et+Shunts+(2)-_-2518682&matchtype=&pla-321137858785&gclid=Cj0KCQjwhLKUBhDiARIsAMaTLnFPSjXNxxk7wiwrSQBFsIqT5VfPuMc_Ay4DvPVhzphmNF9wRRBNoIkaAl6-EALw_wcB&gclsrc=aw.ds)_(cf.figures ci-dessous_). Dans cette position l'Agrocam fonctionnera normalement, c'est à dire qu'elle s'éteindra après avoir pris une photo. Pour empêcher cela on peut basculer le cavalier entre la **broche 3,3V** et la **broche GPIO 24** ainsi l'Agrocam ne s'éteint pas et il est possible d'en prendre le contrôle (partie 7).
 
-<img src="https://user-images.githubusercontent.com/93132152/170041886-8d5a046a-65c0-40ad-a286-e73cacb53113.png" width=20% height=20%>   <img src="https://user-images.githubusercontent.com/93132152/170041244-7e861340-61f8-4499-b359-bddf76874c6b.jpg" width=30% height=30%>
+<img src="https://user-images.githubusercontent.com/93132152/170041886-8d5a046a-65c0-40ad-a286-e73cacb53113.png" width=20% height=20%>   <img src="https://user-images.githubusercontent.com/93132152/197519706-921a3b5f-f67a-4390-966c-3d595dfbf825.jpg" width=30% height=30%>
+
+
 # 4 Ajouter les fichiers sur le raspberry pi
 Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
 ## 4.1 Le script de l'Agrocam
@@ -150,7 +176,7 @@ sed -i -e 's/\r$//' Agrocam_raspberry.sh
 ## 4.2 Les variables d'environnement
 Maintenant on va déposer dans un fichier séparé du script les variables qui permettent de se connecter au serveur FTP où seront envoyées et stockées les photos.
 
-Depuis WinSCP, glisser déposer .env dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. Attention le fichier peut être caché
+Depuis WinSCP, glisser déposer .env dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password) et la valeur de I2CAdress. Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. Ce fichier contient également l'adrese I2C de la carte WittyPi (obtenu en 2.4), cette variable est un entier. Par exemple si le port I2C est 0x08, taper simplement ```I2CAdress=8```. Attention le fichier peut être caché.
 
 Le fichier peut aussi être crée depuis le terminal :
 ```
@@ -162,6 +188,7 @@ Contenu de .env
 hostname = ""
 user = ""
 password =""
+I2CAdress=
 ```
 
 # 5 Démarrer le script au reboot
@@ -178,8 +205,13 @@ Ajouter une ligne à la fin du crontab :
 ```
 Ajouter ```>> /var/log/Agrocam.log 2>&1``` à la ligne précédente pour créer un fichier de log pour débugger
 
-# 6 Tester le script
-Pour relancer le raspberry : ```sudo reboot```, il devrait s'allumer, actionner le servomoteur, prendre une photo, réactionner le servomoteur, envoyer la photo sur le serveur et enfin s'éteindre.
+Enfin éteindre l'Agrocam avec : ```sudo shutdown -h now```
+
+# 6 Demarrer l'Agrocam
+## 6.1 Passer sur l'alimentation batterie
+
+## 6.2 Relancer l'Agrocam
+Pour relancer l'Agrocam, appuyer sur le bouton poussoir : elle devrait s'allumer, actionner le servomoteur, prendre une photo, réactionner le servomoteur, envoyer la photo sur le serveur et enfin s'éteindre.
 
 # 7 Debugger l'Agrocam
 Le script ```Agrocam_raspberry.sh``` éteint l'Agrocam à la fin de son exécution, une fois cette partie 1 terminée il serait donc impossible de se connecter au raspberry en SSH car le script ```Agrocam_raspberry.sh``` est lancé à chaque démarrage _(cf. partie 1.8)_. La solution consiste donc à empêcher que le script n'aille jusqu'au bout lorsqu'on le désire. Pour celà il y a une boucle en python à la fin du script qui tourne indéfiniement si le port GPIO 24 est "TRUE" donc connecté au 3,3V **(à l'aide du cavalier)**:
@@ -197,6 +229,10 @@ while (GPIO.input(controlPin) == 1) :
 	i += 1
 END_OF_PYTHON
 ```
+Ci-dessous la position du cavalier pour que le script n'éteigne pas l'Agrocam à la fin de son exécution :
+<img src="https://user-images.githubusercontent.com/93132152/197520127-1235e3c9-2c6c-40fe-a818-20d08dc6f98e.jpg" width=30% height=30%>
+
+
 ## 2.4 Tester l'Agrocam
 Une fois ces étapes terminées. Eteindre l'Agrocam ```sudo shutdown -h now ``` puis repositionner le cavalier en position initiale.
 Vous pouvez débrancher l'alimentation et connecter les cellules Li-ion comme sur la photo ci-dessous. Cette [vidéo](https://www.youtube.com/watch?v=nqwYTafg8Z0) vous explique comment réaliser la connectique mâle du XH2.54 sur les fils du boitier d'alimentation.
