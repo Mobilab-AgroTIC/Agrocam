@@ -14,6 +14,7 @@ gpio -g pwm 18 90
 
 #take picture
 mkdir -p /home/pi/Agrocam
+sudo chmod 777 Agrocam
 sleep 10
 libcamera-jpeg -o /home/pi/Agrocam/temp.jpg
 
