@@ -50,9 +50,9 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 
 ## 1.6. Installer les librairies 
 Les parties ci-dessous ne sont pas nécessaires mais il est possible que si le reste ne fonctionne pas, le problème vienne de là.
-**Si la caméra ne marche pas**, ouvrir les paramètres ```sudo raspi-config``` puis suivre les étapes : ```3 Interface Options/I1 Legacy Camera/YES/Finish/RebootYes```
 
 **Si le servomoteur ne marche pas**, les GPIO ne sont peut-être pas activés. Ouvrir les paramètres ```sudo raspi-config``` puis suivre les étapes :```3 Interface Options/RemoteGPIO/YES/Finish/RebootYes``` A priori pas besoin de ça
+
 ### 1.6.1 Installer git 
 ```
 sudo apt-get install git
@@ -81,6 +81,9 @@ sudo cp -R /home/pi/.local/lib/python3.9/site-packages/smbus.cpython-39-arm-linu
 sudo cp -R /home/pi/.local/lib/python3.9/site-packages/smbus-1.1.post2.dist-info/ /usr/lib/python3.9
 ```
 *On déplace la librairie pour qu'elle soit trouvée en démarrage automatique*
+
+### 1.6.5 Activer le bus I2C
+Ouvrir les paramètres ```sudo raspi-config``` puis suivre les étapes :```3 Interface Options/I2C/YES/Finish```
 
 # 2. Programmer l'allumage de l'Agrocam avec la carte WittyPi
 A partir de cette étape, cette branche diffère fortement de la branche main. On va pouvoir paramétrer l'allumage du raspberry grâce à la carte Witty Pi 3
