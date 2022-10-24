@@ -44,21 +44,22 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
-import smbus
+#getting environnement data
+load_dotenv("/home/pi/.env")
+hostname=os.environ.get('hostname')
+user=os.environ.get('user')
+password=os.environ.get('password')
+I2CAdress=int(os.environ.get('I2CAdress'))
 
+import smbus
 bus = smbus.SMBus(1)
-voltageInt=bus.read_byte_data(0x69,1)
-voltageDec=bus.read_byte_data(0x69,2)
+voltageInt=str(bus.read_byte_data(I2CAdress,1))
+voltageDec=str(bus.read_byte_data(I2CAdress,2))
 
 now = datetime.now()
 current_date = now.strftime("%Y-%m-%d_%H%M%S")
 
 print("date and time =", current_date)
-
-load_dotenv("/home/pi/.env")
-hostname=os.environ.get('hostname')
-user=os.environ.get('user')
-password=os.environ.get('password')
 
 session = ftplib.FTP(hostname,user,password)
 file = open('/home/pi/Agrocam/temp.jpg','rb')
