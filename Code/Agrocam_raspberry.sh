@@ -47,8 +47,8 @@ from dotenv import load_dotenv
 import smbus
 
 bus = smbus.SMBus(1)
-voltageInt=bus.read_byte_data(0x69,1)
-voltageDec=bus.read_byte_data(0x69,2)
+voltageInt=str(bus.read_byte_data(0x08,1))
+voltageDec=str(bus.read_byte_data(0x08,2))
 
 now = datetime.now()
 current_date = now.strftime("%Y-%m-%d_%H%M%S")
