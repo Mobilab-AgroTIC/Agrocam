@@ -14,6 +14,7 @@ gpio -g pwm 18 90
 
 #take picture
 mkdir -p /home/pi/Agrocam
+sudo chmod 777 Agrocam
 sleep 10
 libcamera-jpeg -o /home/pi/Agrocam/temp.jpg
 
@@ -44,8 +45,14 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
-import smbus
+#getting environnement data
+load_dotenv("/home/pi/.env")
+hostname=os.environ.get('hostname')
+user=os.environ.get('user')
+password=os.environ.get('password')
+I2CAdress=int(os.environ.get('I2CAdress'))
 
+import smbus
 bus = smbus.SMBus(1)
 voltageInt=str(bus.read_byte_data(0x08,1))
 voltageDec=str(bus.read_byte_data(0x08,2))
@@ -54,11 +61,6 @@ now = datetime.now()
 current_date = now.strftime("%Y-%m-%d_%H%M%S")
 
 print("date and time =", current_date)
-
-load_dotenv("/home/pi/.env")
-hostname=os.environ.get('hostname')
-user=os.environ.get('user')
-password=os.environ.get('password')
 
 session = ftplib.FTP(hostname,user,password)
 file = open('/home/pi/Agrocam/temp.jpg','rb')
