@@ -50,7 +50,7 @@ load_dotenv("/home/pi/.env")
 hostname=os.environ.get('hostname')
 user=os.environ.get('user')
 password=os.environ.get('password')
-I2CAdress=int(os.environ.get('I2CAdress'))
+url=os.environ.get('url')
 
 import smbus
 bus = smbus.SMBus(1)
@@ -64,7 +64,7 @@ print("date and time =", current_date)
 
 session = ftplib.FTP(hostname,user,password)
 file = open('/home/pi/Agrocam/temp.jpg','rb')
-session.storbinary('STOR /img/dev1_'+ current_date +'_'+voltageInt+'_'+voltageDec+'.jpg', file)
+session.storbinary(url+'_'+ current_date +'_'+voltageInt+'_'+voltageDec+'.jpg', file)
 file.close()
 session.quit()
 
