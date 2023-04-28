@@ -35,7 +35,7 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 - Brancher la Picam. Attention au sens de branchement de la nappe de cable _(cf. photo ci-dessous)_. Attention les connecteurs sont fragiles, à manipuler avec précautions.
 <img src="https://www.raspberrypi.com/app/uploads/2016/05/2016-05-15-16.32.19-768x576.jpg" width=20% height=20%>
 
-- Brancher le dongle 4G au Raspberry sur le port **"USB"** _cf. photo ci-dessous_
+- Brancher le dongle 4G au Raspberry sur le port **"USB"** _cf. photo ci-dessous_ _Par la suite il est possible que le dongle se déconnecte de temps à autre, ce qui va poser problème. Cela est du au Raspberry qui en fonction des modèle de dongle 4G ne fournit pas une intensité suffisante. Si cela se présente, veuillez brancher le dongle sur une autre source de courant par exemple un chargeur rapide 2 ampères de téléphone portable_
 - Brancher l'alimentation sur le port **"PWR IN"** _cf. photo ci-dessous_
 <img src="https://user-images.githubusercontent.com/93132152/169502193-72963340-17c8-46ee-b322-8d32348ea31f.png"  width=30% height=30%>
 
