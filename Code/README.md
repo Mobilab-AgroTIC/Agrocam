@@ -52,8 +52,6 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 ## 1.6. Installer les librairies 
 Les parties ci-dessous ne sont pas nécessaires mais il est possible que si le reste ne fonctionne pas, le problème vienne de là.
 
-**Si le servomoteur ne marche pas**, les GPIO ne sont peut-être pas activés. Ouvrir les paramètres ```sudo raspi-config``` puis suivre les étapes :```3 Interface Options/RemoteGPIO/YES/Finish/RebootYes``` A priori pas besoin de ça
-
 ### 1.6.1 Installer git 
 ```
 sudo apt-get install git
