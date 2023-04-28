@@ -1,5 +1,5 @@
 #!/bin/bash
-
+PATH=$PATH:/usr/local/bin
 echo "hello World !";
 echo "Today is $(date)"
 # Shtudown HDMI port (battery saver)
