@@ -86,84 +86,9 @@ sudo cp -R /home/pi/.local/lib/python3.9/site-packages/smbus-1.1.post2.dist-info
 ### 1.6.5 Activer le bus I2C
 Ouvrir les paramètres ```sudo raspi-config``` puis suivre les étapes :```3 Interface Options/I2C/YES/Finish```
 
-# 2. Programmer l'allumage de l'Agrocam avec la carte WittyPi
-A partir de cette étape, cette branche diffère fortement de la branche main. On va pouvoir paramétrer l'allumage du raspberry grâce à la carte Witty Pi 3
-
-## 2.1 Installer WittyPi
-Installer WittyPi avec les lignes de commandes suivantes.
-```
-wget http://www.uugear.com/repo/WittyPi3/install.sh
-sudo sh install.sh
-```
-Puis éteindre le raspberry avec ```sudo shutdown -h now``` puis passer à l'étape d'après.
-Une fois le raspberry éteint, débrancher l'alimentation électrique.
-
-## 2.2 Connecter la carte WittyPi 3 au Raspberry
-Insérer une pile 3V (si possible rechargeable et fourni avec la carte WittyPi 3) dans l'emplacement prévu à cette effet sur la carte Witty Pi
-
-Les broches s'emboitent de la manière suivante.
-
-<img src="https://user-images.githubusercontent.com/93132152/197517482-6a5a1459-3894-4c51-946a-7dcf6b49754d.jpg" width=30% height=30%>
-
-## 2.3 Paramétrer le WittyPi
-Brancher l'alimentation électrique directement sur la carte Witty Pi (l'alimentation du raspberry a été débranché en 2.1), c'est cette carte qui va ensuite gérer l'alimentation du raspberry. Pour que le raspberry démarre (en attendant qu'on lui donne un planing de mise en route), il faut appuyer sur le bouton poussoir de la carte Witty Pi. Lors de cette première mise en route, il est possible que le Dongle 4G ne s'allume pas. Il suffit de le débrancher et rebrancher.
-
-<img src="https://user-images.githubusercontent.com/93132152/197518071-94065c91-ed4a-4cee-8cfb-99ead7fd86a6.jpg" width=30% height=30%>
-
-Se connecter au Raspberry comme dans la partie 1.5, ouvrir le terminal de commande et démarrer WittyPi avec la commande suivante :
-```
-sudo ./wittypi/wittyPi.sh
-```
-Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous allons procéder ainsi :
-1. ```3.Synchronize time``` taper 3 et entrer
-2. ```7. Set low voltage threshold``` taper 7 et entrer puis saisir 6,5V et entrer
-3. ```9. View/change other settings...``` taper 9 et entrer. Ensuite suivre les instructions pour chaque paramètre. Attention lorsqu'un paramètre est validé on revient au menu initial, il faut donc revenir dans ```9. View/change other settings...```
-
-| Paramètre  | Valeur |
-| ------------- | ------------- |
-| Default state when powered  | OFF  |
-| Power cut delay after shutdown  | Inchangé  |
-| Pulsing interval during sleep  | 8  |
-| White LED duration  | 0  |
-| Dummy load duration  | 0  |
-| Vin adjustment | Inchangé  |
-| Vout adjustment  | Inchangé  |
-| Iout adjustment  | Inchangé  |
-
-4. ```5. Schedule next startup``` taper 5 et entrer. Ensuite taper la chaine de caractère correspondant à votre fréquence d'acquisition. Exemple ```?? 12:00:00``` pour déclencher tous les jours à midi ou ```?? ??:15:00``` pour tous les jours et toutes les heures à la 15e minute. Pour faire plusieurs démarrages en une journée il faudra faire un paramétrage plus complexe. Voir le [guide d'utilisateur](https://www.uugear.com/doc/WittyPi3_UserManual.pdf) de la carte qui est très bien fait.
-
-5. ```11. Exit``` taper 11 et entrer
-
-## 2.4 Récupérer l'adresse I2C de la carte WittyPi
-Cette adresse est nécessaire pour la lecture de la tension de la batterie. Pour obtenir l'adresse, saisir la commande suivante :
-
-```
-i2cdetect -y 1
-```
-
-Il n'y a qu'une seule adresse qui est détectée, c'est celle du WittyPi, ici c'est l'adresse 0x08 :
-```
-0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-00:                         08 -- -- -- -- -- -- --
-10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-70: -- -- -- -- -- -- -- --
-```
-
-# 3 Finaliser les branchements
-- Brancher le servo moteur sur les broches du WittyPi. Le fil rouge du servo est relié à une **broche 5V**, le fil noir à une **broche GND**, et le fil restant (blanc, jaune) à la **broche GPIO 18** _cf.figures ci-dessous_
-- Connecter les **broches GPIO 24 et GND** à l'aide d'un [cavalier](https://fr.rs-online.com/web/p/cavaliers-et-shunts/2518682?cm_mmc=FR-PLA-DS3A-_-google-_-CSS_FR_FR_Connecteurs_Whoop-_-(FR:Whoop!)+Cavaliers+et+Shunts+(2)-_-2518682&matchtype=&pla-321137858785&gclid=Cj0KCQjwhLKUBhDiARIsAMaTLnFPSjXNxxk7wiwrSQBFsIqT5VfPuMc_Ay4DvPVhzphmNF9wRRBNoIkaAl6-EALw_wcB&gclsrc=aw.ds)_(cf.figures ci-dessous_). Dans cette position l'Agrocam fonctionnera normalement, c'est à dire qu'elle s'éteindra après avoir pris une photo. Pour empêcher cela on peut basculer le cavalier entre la **broche 3,3V** et la **broche GPIO 24** ainsi l'Agrocam ne s'éteint pas et il est possible d'en prendre le contrôle (partie 7).
-
-<img src="https://user-images.githubusercontent.com/93132152/170041886-8d5a046a-65c0-40ad-a286-e73cacb53113.png" width=20% height=20%>   <img src="https://user-images.githubusercontent.com/93132152/197519706-921a3b5f-f67a-4390-966c-3d595dfbf825.jpg" width=30% height=30%>
-
-
-# 4 Ajouter les fichiers sur le raspberry pi
+# 2 Ajouter les fichiers sur le raspberry pi
 Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
-## 4.1 Le script de l'Agrocam
+## 2.1 Le script de l'Agrocam
 Glisser déposer Agrocam_raspberry.sh dans /home/pi
 
 Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
@@ -173,10 +98,14 @@ sed -i -e 's/\r$//' Agrocam_raspberry.sh
 ```
 **Attention :** Le script Agrocam_raspberry.sh contient ```sudo shutdown -h now``` à la fin qui éteint l'Agrocam. Pour débugger le script (c'est-à-dire reprendre la main dessus) il est recommandé de commenter cette ligne _cf. partie 7_
 
-## 4.2 Les variables d'environnement
+## 2.2 Les variables d'environnement
 Maintenant on va déposer dans un fichier séparé du script les variables qui permettent de se connecter au serveur FTP où seront envoyées et stockées les photos.
 
-Depuis WinSCP, glisser déposer .env dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password) et la valeur de I2CAdress. Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. Ce fichier contient également l'adrese I2C de la carte WittyPi (obtenu en 2.4), cette variable est un entier. Par exemple si le port I2C est 0x08, taper simplement ```I2CAdress=8```. Attention le fichier peut être caché.
+Depuis WinSCP, glisser déposer .env dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password,url). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. 
+
+Pour l'url, il faut changer les "id" pour déposer les fichiers sur le FTP de la plateforme Agrocam. Il s'agit d'une chaine de 8 caractère qui vous a été communiquée à la création de votre Agrocam sur la plateforme.
+
+Attention le fichier est caché dans WinSCP par exemple, mais il existe bien une fois téléversé.
 
 Le fichier peut aussi être crée depuis le terminal :
 ```
@@ -188,8 +117,73 @@ Contenu de .env
 hostname = ""
 user = ""
 password =""
-I2CAdress=
+url="STOR /data/id/id"
 ```
+
+# 3. Programmer l'allumage de l'Agrocam avec la carte WittyPi
+A partir de cette étape, cette branche diffère fortement de la branche main. On va pouvoir paramétrer l'allumage du raspberry grâce à la carte Witty Pi 4
+
+## 3.1 Installer WittyPi
+Installer WittyPi avec les lignes de commandes suivantes.
+```
+wget http://www.uugear.com/repo/WittyPi4/install.sh
+sudo sh install.sh
+```
+Puis éteindre le raspberry avec ```sudo shutdown -h now``` puis passer à l'étape d'après.
+Une fois le raspberry éteint, débrancher l'alimentation électrique.
+
+## 3.2 Connecter la carte WittyPi 4 au Raspberry
+Insérer une pile 3V (si possible rechargeable et fourni avec la carte WittyPi 3) dans l'emplacement prévu à cette effet sur la carte Witty Pi
+
+Les broches s'emboitent de la manière suivante.
+
+<img src="https://user-images.githubusercontent.com/93132152/197517482-6a5a1459-3894-4c51-946a-7dcf6b49754d.jpg" width=30% height=30%>
+
+
+## 3.4 Paramétrer le WittyPi
+Brancher l'alimentation électrique directement sur la carte Witty Pi (l'alimentation du raspberry a été débranché en 2.1), c'est cette carte qui va ensuite gérer l'alimentation du raspberry. Pour que le raspberry démarre (en attendant qu'on lui donne un planing de mise en route), il faut appuyer sur le bouton poussoir de la carte Witty Pi. Lors de cette première mise en route, il est possible que le Dongle 4G ne s'allume pas. Il suffit de le débrancher et rebrancher.
+
+<img src="https://user-images.githubusercontent.com/93132152/197518071-94065c91-ed4a-4cee-8cfb-99ead7fd86a6.jpg" width=30% height=30%>
+
+Se connecter au Raspberry comme dans la partie 1.5, ouvrir le terminal de commande et démarrer WittyPi avec la commande suivante :
+```
+sudo ./wittypi/wittyPi.sh
+```
+Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous allons procéder ainsi :
+1. ```3.Synchronize time``` taper 3 et entrer
+2. ```7. Set low voltage threshold``` taper 7 et entrer puis saisir 6.5V et entrer
+3. ```8. Set recovery voltage threshold``` taper 8 et entrer puis saisir 7V et entrer
+4. ```11. View/change other settings...``` taper 11 et entrer. Ensuite suivre les instructions pour chaque paramètre. Attention lorsqu'un paramètre est validé on revient au menu initial, il faut donc revenir dans ```11. View/change other settings...```
+
+| Paramètre  | Valeur |
+| ------------- | ------------- |
+| Default state when powered  | OFF  |
+| Power cut delay after shutdown  | Inchangé  |
+| Pulsing interval during sleep  | 20 |
+| White LED duration  | 0  |
+| Dummy load duration  | 0  |
+| Vin adjustment | Inchangé  |
+| Vout adjustment  | Inchangé  |
+| Iout adjustment  | Inchangé  |
+
+6. ```13. Exit``` taper 13 et entrer
+
+## 2.5 Verser le planning d'allumage
+Pour savoir à quelle heure démarrer, la carte WittyPi a besoin du script ```agrocam_schedule.wpi```. La version disponible sur le repository permet de déclencher l'allumage du raspberry à 11h (heure d'hiver, 12h en été) chaque jour. Si vous souhaitez modifier le planning d'allumage et savoir comment modifier le script, référez vous à la [documentation de la carte WittyPi 4](https://www.uugear.com/doc/WittyPi4_UserManual.pdf).
+
+Le script doit être déposé dans le dossier (à l'aide de WinSCP par exemple) /home/pi/wittypi/schedules.
+
+## 2.6 Lancer le planning d'allumage
+Rouvrir wittyPi ```sudo ./wittypi/wittyPi.sh```. Puis tapez 6 pour ```6. Choose schedule script```puis tapez le chiffre qui correspond au script ```agrocam_schedule.wpi``` ici c'est 1.
+
+Maintenant il devrait être écrit la prochaine date à laquelle l'Agrocam va démarrer à la ligne 5 des paramètres de la carte WittyPi. Si vous faites l'étape précédente à 12H. L'Agrocam démarrera pour la première fois le lendemain à 12h. Si vous la faites après 12h, l'Agrocam démarrera le surlendemain à la même heure.
+
+# 3 Finaliser les branchements
+- Brancher le servo moteur sur les broches du WittyPi. Le fil rouge du servo est relié à une **broche 5V**, le fil noir à une **broche GND**, et le fil restant (blanc, jaune) à la **broche GPIO 18** _cf.figures ci-dessous_
+- Connecter les **broches GPIO 24 et GND** à l'aide d'un [cavalier](https://fr.rs-online.com/web/p/cavaliers-et-shunts/2518682?cm_mmc=FR-PLA-DS3A-_-google-_-CSS_FR_FR_Connecteurs_Whoop-_-(FR:Whoop!)+Cavaliers+et+Shunts+(2)-_-2518682&matchtype=&pla-321137858785&gclid=Cj0KCQjwhLKUBhDiARIsAMaTLnFPSjXNxxk7wiwrSQBFsIqT5VfPuMc_Ay4DvPVhzphmNF9wRRBNoIkaAl6-EALw_wcB&gclsrc=aw.ds)_(cf.figures ci-dessous_). Dans cette position l'Agrocam fonctionnera normalement, c'est à dire qu'elle s'éteindra après avoir pris une photo. Pour empêcher cela on peut basculer le cavalier entre la **broche 3,3V** et la **broche GPIO 24** ainsi l'Agrocam ne s'éteint pas et il est possible d'en prendre le contrôle (partie 7).
+
+<img src="https://user-images.githubusercontent.com/93132152/170041886-8d5a046a-65c0-40ad-a286-e73cacb53113.png" width=20% height=20%>   <img src="https://user-images.githubusercontent.com/93132152/197519706-921a3b5f-f67a-4390-966c-3d595dfbf825.jpg" width=30% height=30%>
+
 
 # 5 Démarrer le script au reboot
 Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 24 au 3,3v pour que l'Agrocam reste allumée _cf. partie 7._
