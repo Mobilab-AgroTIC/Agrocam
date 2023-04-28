@@ -168,24 +168,19 @@ Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous al
 
 6. ```13. Exit``` taper 13 et entrer
 
-## 2.5 Verser le planning d'allumage
+## 3.5 Verser le planning d'allumage
 Pour savoir à quelle heure démarrer, la carte WittyPi a besoin du script ```agrocam_schedule.wpi```. La version disponible sur le repository permet de déclencher l'allumage du raspberry à 11h (heure d'hiver, 12h en été) chaque jour. Si vous souhaitez modifier le planning d'allumage et savoir comment modifier le script, référez vous à la [documentation de la carte WittyPi 4](https://www.uugear.com/doc/WittyPi4_UserManual.pdf).
 
 Le script doit être déposé dans le dossier (à l'aide de WinSCP par exemple) /home/pi/wittypi/schedules.
 
-## 2.6 Lancer le planning d'allumage
+## 3.6 Lancer le planning d'allumage
 Rouvrir wittyPi ```sudo ./wittypi/wittyPi.sh```. Puis tapez 6 pour ```6. Choose schedule script```puis tapez le chiffre qui correspond au script ```agrocam_schedule.wpi``` ici c'est 1.
 
-Maintenant il devrait être écrit la prochaine date à laquelle l'Agrocam va démarrer à la ligne 5 des paramètres de la carte WittyPi. Si vous faites l'étape précédente à 12H. L'Agrocam démarrera pour la première fois le lendemain à 12h. Si vous la faites après 12h, l'Agrocam démarrera le surlendemain à la même heure.
+Maintenant il devrait être écrit la prochaine date à laquelle l'Agrocam va démarrer à la ligne 5 des paramètres de la carte WittyPi. Si vous faites l'étape précédente à 12h. L'Agrocam démarrera pour la première fois le lendemain à 12h. Si vous la faites après 12h, l'Agrocam démarrera le surlendemain à la même heure.
 
-# 3 Finaliser les branchements
-- Brancher le servo moteur sur les broches du WittyPi. Le fil rouge du servo est relié à une **broche 5V**, le fil noir à une **broche GND**, et le fil restant (blanc, jaune) à la **broche GPIO 18** _cf.figures ci-dessous_
-- Connecter les **broches GPIO 24 et GND** à l'aide d'un [cavalier](https://fr.rs-online.com/web/p/cavaliers-et-shunts/2518682?cm_mmc=FR-PLA-DS3A-_-google-_-CSS_FR_FR_Connecteurs_Whoop-_-(FR:Whoop!)+Cavaliers+et+Shunts+(2)-_-2518682&matchtype=&pla-321137858785&gclid=Cj0KCQjwhLKUBhDiARIsAMaTLnFPSjXNxxk7wiwrSQBFsIqT5VfPuMc_Ay4DvPVhzphmNF9wRRBNoIkaAl6-EALw_wcB&gclsrc=aw.ds)_(cf.figures ci-dessous_). Dans cette position l'Agrocam fonctionnera normalement, c'est à dire qu'elle s'éteindra après avoir pris une photo. Pour empêcher cela on peut basculer le cavalier entre la **broche 3,3V** et la **broche GPIO 24** ainsi l'Agrocam ne s'éteint pas et il est possible d'en prendre le contrôle (partie 7).
+Puis quittez wittyPi : ```13. Exit``` taper 13 et entrer
 
-<img src="https://user-images.githubusercontent.com/93132152/170041886-8d5a046a-65c0-40ad-a286-e73cacb53113.png" width=20% height=20%>   <img src="https://user-images.githubusercontent.com/93132152/197519706-921a3b5f-f67a-4390-966c-3d595dfbf825.jpg" width=30% height=30%>
-
-
-# 5 Démarrer le script au reboot
+# 4 Démarrer le script au reboot
 Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 24 au 3,3v pour que l'Agrocam reste allumée _cf. partie 7._
 
 Ouvrir le crontab 
@@ -193,13 +188,19 @@ Ouvrir le crontab
 sudo crontab -e
 ```
 Puis sélectionner ```1. /bin/nano``` en tapant ```1```
-Ajouter une ligne à la fin du crontab :
+Ajouter une ligne à la fin du crontab, ici le raspberry va attendre 60 secondes avant de lancer le script de l'Agrocam. Cela permet d'êre sûr que la caméra sera bien détectée :
 ```
-@reboot sudo /home/pi/Agrocam_raspberry.sh 
+@reboot sudo sleep 60 && /home/pi/Agrocam_raspberry.sh 
 ```
 Ajouter ```>> /var/log/Agrocam.log 2>&1``` à la ligne précédente pour créer un fichier de log pour débugger
 
 Enfin éteindre l'Agrocam avec : ```sudo shutdown -h now```
+
+# 5 Finaliser les branchements
+- Brancher le servo moteur sur les broches du WittyPi. Le fil rouge du servo est relié à une **broche 5V**, le fil noir à une **broche GND**, et le fil restant (blanc, jaune) à la **broche GPIO 18** _cf.figures ci-dessous_
+- Connecter les **broches GPIO 24 et GND** à l'aide d'un [cavalier](https://fr.rs-online.com/web/p/cavaliers-et-shunts/2518682?cm_mmc=FR-PLA-DS3A-_-google-_-CSS_FR_FR_Connecteurs_Whoop-_-(FR:Whoop!)+Cavaliers+et+Shunts+(2)-_-2518682&matchtype=&pla-321137858785&gclid=Cj0KCQjwhLKUBhDiARIsAMaTLnFPSjXNxxk7wiwrSQBFsIqT5VfPuMc_Ay4DvPVhzphmNF9wRRBNoIkaAl6-EALw_wcB&gclsrc=aw.ds)_(cf.figures ci-dessous_). Dans cette position l'Agrocam fonctionnera normalement, c'est à dire qu'elle s'éteindra après avoir pris une photo. Pour empêcher cela on peut basculer le cavalier entre la **broche 3,3V** et la **broche GPIO 24** ainsi l'Agrocam ne s'éteint pas et il est possible d'en prendre le contrôle (partie 7).
+
+<img src="https://user-images.githubusercontent.com/93132152/170041886-8d5a046a-65c0-40ad-a286-e73cacb53113.png" width=20% height=20%>   <img src="https://user-images.githubusercontent.com/93132152/197519706-921a3b5f-f67a-4390-966c-3d595dfbf825.jpg" width=30% height=30%>
 
 # 6 Demarrer l'Agrocam
 ## 6.1 Passer sur l'alimentation batterie
