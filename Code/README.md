@@ -50,60 +50,41 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 - Un terminal de commande s'ouvre et vous demande un mot de passe. Il s'agit toujours du même défini à la partie 2. Le mot de passe ne s'affiche pas mais appuyer su r "entrer" et ça marche.
 
 ## 1.6. Installer les librairies 
-Les parties ci-dessous ne sont pas nécessaires mais il est possible que si le reste ne fonctionne pas, le problème vienne de là.
 
-### 1.6.1 Installer git 
-```
-sudo apt-get install git
-```
-### 1.6.2 Installer WiringPi
-```
-git clone https://github.com/WiringPi/WiringPi.git
-cd WiringPi
-git pull origin
-./build
-cd ..
-```
-### 1.6.3 Installer pip et python-dotenv
-Cela peut prendre un peu de temps 
+### 1.6.1 Installer smbus
 ```
 sudo apt-get install python3-pip
-pip install python-dotenv
-sudo cp -R /home/pi/.local/lib/python3.9/site-packages/dotenv /usr/lib/python3.9 
-```
-*On déplace la librairie pour qu'elle soit trouvée en démarrage automatique*
-
-### 1.6.4 Installer smbus
-```
 pip install smbus
-sudo cp -R /home/pi/.local/lib/python3.9/site-packages/smbus.cpython-39-arm-linux-gnueabihf.so /usr/lib/python3.9
-sudo cp -R /home/pi/.local/lib/python3.9/site-packages/smbus-1.1.post2.dist-info/ /usr/lib/python3.9
 ```
-*On déplace la librairie pour qu'elle soit trouvée en démarrage automatique*
 
-### 1.6.5 Activer le bus I2C
+### 1.6.1 Activer le bus I2C
 Ouvrir les paramètres ```sudo raspi-config``` puis suivre les étapes :```3 Interface Options/I2C/YES/Finish```
-
+  
 # 2 Ajouter les fichiers sur le raspberry pi
 Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
+## 2.1 Créer le répertoire pour les photo
+```
+sudo mkdir Agrocam
+```
+
 ## 2.1 Le script de l'Agrocam
-Glisser déposer Agrocam_raspberry.sh dans /home/pi
+Glisser déposer agrocam.py dans /home/pi
 
 Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
 ```
-chmod 777 Agrocam_raspberry.sh
-sed -i -e 's/\r$//' Agrocam_raspberry.sh
+chmod 777 agrocam.py
+sed -i -e 's/\r$//' agrocam.py
+sed -i -e 's/\r$//' credentials.py
+sed -i -e 's/\r$//' agrocam_schedule.wpi
 ```
-**Attention :** Le script Agrocam_raspberry.sh contient ```sudo shutdown -h now``` à la fin qui éteint l'Agrocam. Pour débugger le script (c'est-à-dire reprendre la main dessus) il est recommandé de commenter cette ligne _cf. partie 7_
+**Attention :** Le script agrocam.py envoie la commande ```sudo shutdown -h now``` à la fin qui éteint l'Agrocam. Pour débugger le script (c'est-à-dire reprendre la main dessus) il est recommandé de commenter cette ligne _cf. partie 7_
 
-## 2.2 Les variables d'environnement
+## 2.2 Les credentials
 Maintenant on va déposer dans un fichier séparé du script les variables qui permettent de se connecter au serveur FTP où seront envoyées et stockées les photos.
 
-Depuis WinSCP, glisser déposer .env dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password,url). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. 
+Depuis WinSCP, glisser déposer credentials.py dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password,url). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. 
 
-Pour l'url, il faut changer les "id" pour déposer les fichiers sur le FTP de la plateforme Agrocam. Il s'agit d'une chaine de 8 caractère qui vous a été communiquée à la création de votre Agrocam sur la plateforme.
-
-Attention le fichier est caché dans WinSCP par exemple, mais il existe bien une fois téléversé.
+Pour l'url, il faut changer les "id" pour déposer les fichiers sur le FTP de la plateforme Agrocam. Il s'agit d'une chaine de 8 caractères qui vous a été communiquée à la création de votre Agrocam sur la plateforme.
 
 Le fichier peut aussi être crée depuis le terminal :
 ```
@@ -139,7 +120,7 @@ Les broches s'emboitent de la manière suivante.
 
 
 ## 3.4 Paramétrer le WittyPi
-Brancher l'alimentation électrique directement sur la carte Witty Pi (l'alimentation du raspberry a été débranché en 2.1), c'est cette carte qui va ensuite gérer l'alimentation du raspberry. Pour que le raspberry démarre (en attendant qu'on lui donne un planing de mise en route), il faut appuyer sur le bouton poussoir de la carte Witty Pi. Lors de cette première mise en route, il est possible que le Dongle 4G ne s'allume pas. Il suffit de le débrancher et rebrancher.
+Brancher l'alimentation électrique directement sur la carte Witty Pi 4(l'alimentation du raspberry a été débranché en 3.1), c'est cette carte qui va ensuite gérer l'alimentation du raspberry. Pour que le raspberry démarre (en attendant qu'on lui donne un planing de mise en route), il faut appuyer sur le bouton poussoir de la carte Witty Pi. Lors de cette première mise en route, il est possible que le Dongle 4G ne s'allume pas. Il suffit de le débrancher et rebrancher.
 
 <img src="https://user-images.githubusercontent.com/93132152/197518071-94065c91-ed4a-4cee-8cfb-99ead7fd86a6.jpg" width=30% height=30%>
 
@@ -149,8 +130,8 @@ sudo ./wittypi/wittyPi.sh
 ```
 Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous allons procéder ainsi :
 1. ```3.Synchronize time``` taper 3 et entrer
-2. ```7. Set low voltage threshold``` taper 7 et entrer puis saisir 6.5V et entrer
-3. ```8. Set recovery voltage threshold``` taper 8 et entrer puis saisir 7V et entrer
+2. ```7. Set low voltage threshold``` taper 7 et entrer puis saisir 7V et entrer
+3. ```8. Set recovery voltage threshold``` taper 8 et entrer puis saisir 8V et entrer
 4. ```11. View/change other settings...``` taper 11 et entrer. Ensuite suivre les instructions pour chaque paramètre. Attention lorsqu'un paramètre est validé on revient au menu initial, il faut donc revenir dans ```11. View/change other settings...```
 
 | Paramètre  | Valeur |
@@ -177,22 +158,38 @@ Rouvrir wittyPi ```sudo ./wittypi/wittyPi.sh```. Puis tapez 6 pour ```6. Choose 
 Maintenant il devrait être écrit la prochaine date à laquelle l'Agrocam va démarrer à la ligne 5 des paramètres de la carte WittyPi. Si vous faites l'étape précédente à 12h. L'Agrocam démarrera pour la première fois le lendemain à 12h. Si vous la faites après 12h, l'Agrocam démarrera le surlendemain à la même heure.
 
 Puis quittez wittyPi : ```13. Exit``` taper 13 et entrer
+# 4 Démarrer le script au reboot avec systemd
+```
+sudo nano /lib/systemd/system/agrocam.service
+```
 
-# 4 Démarrer le script au reboot
-Cette partie permet de démarrer le script ```Agrocam_raspberry.sh``` au démarrage. Attention, le script éteint le raspberry à la fin de son exécution. Cette extinction n'a pas lieu si ```controlPin==1```, il faut donc brancher le GPIO 24 au 3,3v pour que l'Agrocam reste allumée _cf. partie 7._
+```
+[Unit]
+Description=My Script Service
+After=multi-user.target
 
-Ouvrir le crontab 
-```
-sudo crontab -e
-```
-Puis sélectionner ```1. /bin/nano``` en tapant ```1```
-Ajouter une ligne à la fin du crontab, ici le raspberry va attendre 60 secondes avant de lancer le script de l'Agrocam. Cela permet d'êre sûr que la caméra sera bien détectée :
-```
-@reboot sudo sleep 60 && /home/pi/Agrocam_raspberry.sh 
-```
-Ajouter ```>> /var/log/Agrocam.log 2>&1``` à la ligne précédente pour créer un fichier de log pour débugger
+[Service]
+Type=idle
+ExecStart=/usr/bin/python3 /home/pi/agrocam.py > /home/pi/myscript.log 2>&1
+WorkingDirectory=/home/pi
+User=pi
 
+[Install]
+WantedBy=multi-user.target
+```
+```
+sudo chmod 644 /lib/systemd/system/agrocam.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable agrocam.service
+```
+
+Si vous souhaitez savoir quel est l'état de votre service :
+```
+sudo systemctl status agrocam.service
+```
 Enfin éteindre l'Agrocam avec : ```sudo shutdown -h now```
+
 
 # 5 Finaliser les branchements
 - Brancher le servo moteur sur les broches du WittyPi. Le fil rouge du servo est relié à une **broche 5V**, le fil noir à une **broche GND**, et le fil restant (blanc, jaune) à la **broche GPIO 18** _cf.figures ci-dessous_
@@ -213,7 +210,7 @@ Voici le montage que vous devriez obtenir
 Pour relancer l'Agrocam, appuyer sur le bouton poussoir : elle devrait s'allumer, actionner le servomoteur, prendre une photo, réactionner le servomoteur, envoyer la photo sur le serveur et enfin s'éteindre.
 
 # 7 Debugger l'Agrocam
-Le script ```Agrocam_raspberry.sh``` éteint l'Agrocam à la fin de son exécution, une fois cette partie 1 terminée il serait donc impossible de se connecter au raspberry en SSH car le script ```Agrocam_raspberry.sh``` est lancé à chaque démarrage _(cf. partie 1.8)_. La solution consiste donc à empêcher que le script n'aille jusqu'au bout lorsqu'on le désire. Pour celà il y a une boucle en python à la fin du script qui tourne indéfiniement si le port GPIO 24 est "TRUE" donc connecté au 3,3V **(à l'aide du cavalier)**:
+Le script ```agrocam.py``` éteint l'Agrocam à la fin de son exécution, une fois cette partie 1 terminée il serait donc impossible de se connecter au raspberry en SSH car le script ```agrocam.py``` est lancé à chaque démarrage _(cf. partie 1.8)_. La solution consiste donc à empêcher que le script n'aille jusqu'au bout lorsqu'on le désire. Pour celà il y a une boucle en python à la fin du script qui tourne indéfiniement si le port GPIO 24 est "TRUE" donc connecté au 3,3V **(à l'aide du cavalier)**:
 ```
 python << END_OF_PYTHON
 import time
@@ -240,4 +237,4 @@ Vous pouvez débrancher l'alimentation et connecter les cellules Li-ion comme su
 <img src="https://user-images.githubusercontent.com/93132152/190140109-795cd432-3d9a-4398-b5f2-6af661773ff9.png" width=30% height=30%>
 
 
-Enfin pour tester le cadrage vous pouvez appuyer à n'importe quel moment sur le bouton poussoir de la Witty Pi 3 pour faire une photo. La caméra démarrera automatiquement à l'heure prédéfinie.
+Enfin pour tester le cadrage vous pouvez appuyer à n'importe quel moment sur le bouton poussoir de la Witty Pi 4 pour faire une photo. La caméra démarrera automatiquement à l'heure prédéfinie.
