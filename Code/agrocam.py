@@ -7,7 +7,7 @@ from time import sleep
 from ftplib import FTP
 from datetime import datetime
 import os
-import credentials
+import credentials as credentials
 import smbus
 
 
