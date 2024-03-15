@@ -65,7 +65,6 @@ def envoyer_sur_ftp():
 
 def main():
     initialize_GPIO()
-    # GPIO.setup(pwm_gpio, GPIO.OUT)
     pwm = GPIO.PWM(pwm_gpio,frequence)
     pwm.start(0)
     try:
