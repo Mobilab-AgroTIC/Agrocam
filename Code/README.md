@@ -14,17 +14,21 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 - Installer Raspberry Pi imager https://www.raspberrypi.com/software/
 - Ouvrir Raspberry Pi imager
 - Insérer la carte SD du raspberry dans le PC
+- La fenêtre suivante s'affiche. Il faut passer dans les 3 menus pour préparer l'écriture de l'image sur le raspberry
+<img src="https://github.com/Mobilab-AgroTIC/Agrocam/assets/93132152/0d2109b7-a593-48bd-8a5c-4dd2083974d9" width=30% height=30%>
 
-- Sélectionner l'espace de stockage correspondant à la carte SD et sélectionner l'OS : **Raspberry Pi OS Lite (32-bit)**
-<img src="https://user-images.githubusercontent.com/93132152/169273540-02b78e90-f551-4a8f-ac33-b90f7be4cffa.png" width=30% height=30%>  <img src="https://user-images.githubusercontent.com/93132152/169275055-28434132-3a4c-42e0-8752-84e8525d4922.png" width=30% height=30%>
+1. Sélectionner le modèle du Raspberry **Raspberry pi zero**
+2. Sélectionner l'OS **Raspberry Pi OS Lite (32-bit)**
+3. Sélectionner l'espace de stockage correspondant à la carte SD
 
-- Dans les paramètres <img src="https://user-images.githubusercontent.com/93132152/169275716-50c48613-8d7e-4b10-8681-f49c881cf00c.png" width=4% height=4%>:
+
+- Puis en cliquant sur **Suivant** un message demande si nous souhaitons modifier les paramètres. Cliquez sur **Modifier réglages**, une fenêtre s'ouvre:
     - Activer le SSH
-    - Définir un mot de passe pour le Raspberry et un nom d'utilisateur (conserver "pi")
+    - Définir un mot de passe pour le Raspberry et un nom d'utilisateur (conserver "pi" pour les deux). Vous pouvez aussi donner comme mot de passe la chaine de 8 caractères qui vous a été attribué lors de la déclaration de l'Agrocam sur le serveur.
     - Définir les paramètres Wifi (SSID, Password, pays (FR)) du dongle 4G. ** Bien penser à modifier le paramètre Wireless LAN country avec "FR"**
 <img src="https://user-images.githubusercontent.com/93132152/169276815-ce32ffe7-997c-40b8-b6e8-bc613ae2f673.png" width=30% height=30%>
-- Cliquer sur "save" puis sur "écrire"
-- L'écriture peut prendre du temps, n'hésitez pas à faire les installations de la partie 3 en attendant
+- Cliquez sur **enregistrer** puis sur **Oui**
+- L'écriture peut prendre du temps, n'hésitez pas à faire les installations de la partie 1.3 en attendant
 
 ## 1.3. Installer les logiciels pour la suite
 - Installer [WinSCP](https://winscp.net/eng/download.php) sur votre PC. Ce logiciel permet de se connecter au raspberry en SSH, de parcourir ses fichier et d'interagir avec le terminal de commandes.
@@ -57,7 +61,7 @@ sudo apt-get install python3-pip
 pip install smbus
 ```
 
-### 1.6.1 Activer le bus I2C
+### 1.6.2 Activer le bus I2C
 Ouvrir les paramètres ```sudo raspi-config``` puis suivre les étapes :```3 Interface Options/I2C/YES/Finish```
   
 # 2 Ajouter les fichiers sur le raspberry pi
@@ -156,6 +160,8 @@ Le script doit être déposé dans le dossier (à l'aide de WinSCP par exemple) 
 Rouvrir wittyPi ```sudo ./wittypi/wittyPi.sh```. Puis tapez 6 pour ```6. Choose schedule script```puis tapez le chiffre qui correspond au script ```agrocam_schedule.wpi``` ici c'est 1.
 
 Maintenant il devrait être écrit la prochaine date à laquelle l'Agrocam va démarrer à la ligne 5 des paramètres de la carte WittyPi. Si vous faites l'étape précédente à 12h. L'Agrocam démarrera pour la première fois le lendemain à 12h. Si vous la faites après 12h, l'Agrocam démarrera le surlendemain à la même heure.
+
+Une fois le script d'allumage pris en compte, le prochain allumage aura lieu que le surlendemain. Pour éviter de perde un jour de photo on peut paramétrer le prochain allumage en tapant 5 ```5. Schedule next startup```. Ici suivez ce que dit le programme pour programmer le prochain allumage. Cela devrait ressembler à XX 11:00:30 où XX est la date du prochain allumage souhaité.
 
 Puis quittez wittyPi : ```13. Exit``` taper 13 et entrer
 # 4 Démarrer le script au reboot avec systemd
