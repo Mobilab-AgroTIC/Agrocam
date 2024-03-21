@@ -62,6 +62,8 @@ def envoyer_sur_ftp():
     with open('/home/pi/Agrocam/photo.jpg', 'rb') as fichier:
         ftp.storbinary('STOR /data/'+ credentials.name +'/'+credentials.name+'_'  + current_date + '_' + voltageInt + '_' + voltageDec + '.jpg',fichier)
     ftp.quit()
+    dest_path="sudo mv /home/pi/Agrocam/photo.jpg /home/pi/Agrocam/"+credentials.name+"_"  + current_date + "_" + voltageInt + "_" + voltageDec + ".jpg"
+    os.system(dest_path)
 
 def main():
     initialize_GPIO()
