@@ -76,7 +76,7 @@ Glisser déposer agrocam.py dans /home/pi
 
 Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
 ```
-chmod 777 agrocam.py
+chmod 777 Agrocam
 sed -i -e 's/\r$//' agrocam.py
 sed -i -e 's/\r$//' credentials.py
 sed -i -e 's/\r$//' agrocam_schedule.wpi
