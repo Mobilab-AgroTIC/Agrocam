@@ -66,16 +66,17 @@ def envoyer_sur_ftp():
     os.system(dest_path)
 
 def main():
+    sleep(30) # waiting for wifi
     initialize_GPIO()
     pwm = GPIO.PWM(pwm_gpio,frequence)
     pwm.start(0)
     try:
-        pwm.ChangeDutyCycle(angle_to_percent(90))
+        pwm.ChangeDutyCycle(angle_to_percent(0))
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
         prendre_photo()
-        pwm.ChangeDutyCycle(angle_to_percent(0))
+        pwm.ChangeDutyCycle(angle_to_percent(90))
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
