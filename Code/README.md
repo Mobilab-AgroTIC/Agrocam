@@ -135,7 +135,7 @@ sudo ./wittypi/wittyPi.sh
 Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous allons procéder ainsi :
 1. ```3.Synchronize time``` taper 3 et entrer
 2. ```7. Set low voltage threshold``` taper 7 et entrer puis saisir 7V et entrer
-3. ```8. Set recovery voltage threshold``` taper 8 et entrer puis saisir 8V et entrer
+3. ```8. Set recovery voltage threshold``` taper 8 et entrer puis saisir 0 et entrer (sinon quand on change la batterie la camera pourrait redemarrer)
 4. ```11. View/change other settings...``` taper 11 et entrer. Ensuite suivre les instructions pour chaque paramètre. Attention lorsqu'un paramètre est validé on revient au menu initial, il faut donc revenir dans ```11. View/change other settings...```
 
 | Paramètre  | Valeur |
