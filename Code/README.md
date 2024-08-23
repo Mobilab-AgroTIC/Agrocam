@@ -74,8 +74,8 @@ sudo mkdir Agrocam
 ## 2.1 Le script de l'Agrocam
 Glisser déposer agrocam.py dans /home/pi
 Glisser déposer credentials.py dans /home/pi
-Glisser déposer agrocam_schedule.wp dans
-Glisser déposer sync_network_time.sh
+Glisser déposer agrocam_schedule.wp dans /home/pi/wittypi/schedules
+Glisser déposer sync_network_time.sh dans /home/pi/wittypi
 Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
 ```
 chmod 777 Agrocam
