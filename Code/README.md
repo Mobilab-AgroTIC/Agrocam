@@ -79,7 +79,7 @@ Glisser déposer sync_network_time.sh dans /home/pi/wittypi
 Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
 ```
 chmod 777 Agrocam
-chmod 777 sync_network_time.sh
+sudo chmod 777 /home/pi/wittypi/sync_network_time.sh
 sed -i -e 's/\r$//' agrocam.py
 sed -i -e 's/\r$//' credentials.py
 sed -i -e 's/\r$//' agrocam_schedule.wpi
