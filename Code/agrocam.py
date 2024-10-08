@@ -43,26 +43,25 @@ def angle_to_percent (angle) :
 
     return start + angle_as_percent
 
-def prendre_photo():
+def prendre_photo(date):
     camera.start_preview()
     camera.start()
     sleep(2)
-    camera.capture_file('/home/pi/Agrocam/photo.jpg')
+    camera.capture_file('/home/pi/Agrocam/photo'+date+'.jpg')
     camera.stop_preview()
     camera.close()
 
-def envoyer_sur_ftp():
+def envoyer_sur_ftp(date):
     ftp = FTP(credentials.ftp_server)
     ftp.login(credentials.ftp_username, credentials.ftp_password)
-    now = datetime.now()
-    current_date = now.strftime("%Y-%m-%d_%H%M%S")
+    
     bus = smbus.SMBus(1)
     voltageInt=str(bus.read_byte_data(0x08,1))
     voltageDec=str(bus.read_byte_data(0x08,2))
-    with open('/home/pi/Agrocam/photo.jpg', 'rb') as fichier:
-        ftp.storbinary('STOR /data/'+ credentials.name +'/'+credentials.name+'_'  + current_date + '_' + voltageInt + '_' + voltageDec + '.jpg',fichier)
+    with open('/home/pi/Agrocam/photo'+date+'.jpg', 'rb') as fichier:
+        ftp.storbinary('STOR /data/'+ credentials.name +'/'+credentials.name+'_'  + date + '_' + voltageInt + '_' + voltageDec + '.jpg',fichier)
     ftp.quit()
-    dest_path="sudo mv /home/pi/Agrocam/photo.jpg /home/pi/Agrocam/"+credentials.name+"_"  + current_date + "_" + voltageInt + "_" + voltageDec + ".jpg"
+    dest_path="sudo mv /home/pi/Agrocam/photo"+date+".jpg /home/pi/Agrocam/"+credentials.name+"_"  + date + "_" + voltageInt + "_" + voltageDec + ".jpg"
     os.system(dest_path)
 
 def main():
@@ -70,17 +69,19 @@ def main():
     initialize_GPIO()
     pwm = GPIO.PWM(pwm_gpio,frequence)
     pwm.start(0)
+    now = datetime.now()
+    current_date = now.strftime("%Y-%m-%d_%H%M%S")
     try:
         pwm.ChangeDutyCycle(angle_to_percent(0))
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
-        prendre_photo()
+        prendre_photo(current_date)
         pwm.ChangeDutyCycle(angle_to_percent(90))
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
-        envoyer_sur_ftp()
+        envoyer_sur_ftp(current_date)
         print("Traitement terminé.")
         sleep(1)  # Attendre avant de répéter le traitement
 
@@ -90,6 +91,7 @@ def main():
     finally:
         pwm.stop()
         camera.close()
+        os.system("sudo /home/pi/wittypi/sync_network_time.sh")
         i=1
         while (GPIO.input(controlPin) == 1) :
             sleep(5)
