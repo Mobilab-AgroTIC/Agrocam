@@ -73,13 +73,17 @@ sudo mkdir Agrocam
 
 ## 2.1 Le script de l'Agrocam
 Glisser déposer agrocam.py dans /home/pi
-
+Glisser déposer credentials.py dans /home/pi
+Glisser déposer agrocam_schedule.wp dans /home/pi/wittypi/schedules
+Glisser déposer sync_network_time.sh dans /home/pi/wittypi
 Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
 ```
 chmod 777 Agrocam
+chmod 777 sync_network_time.sh
 sed -i -e 's/\r$//' agrocam.py
 sed -i -e 's/\r$//' credentials.py
 sed -i -e 's/\r$//' agrocam_schedule.wpi
+sed -i -e 's/\r$//' sync_network_time.sh
 ```
 **Attention :** Le script agrocam.py envoie la commande ```sudo shutdown -h now``` à la fin qui éteint l'Agrocam. Pour débugger le script (c'est-à-dire reprendre la main dessus) il est recommandé de commenter cette ligne _cf. partie 7_
 
@@ -135,7 +139,7 @@ sudo ./wittypi/wittyPi.sh
 Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous allons procéder ainsi :
 1. ```3.Synchronize time``` taper 3 et entrer
 2. ```7. Set low voltage threshold``` taper 7 et entrer puis saisir 7V et entrer
-3. ```8. Set recovery voltage threshold``` taper 8 et entrer puis saisir 8V et entrer
+3. ```8. Set recovery voltage threshold``` taper 8 et entrer puis saisir 0 et entrer (sinon quand on change la batterie la camera pourrait redemarrer)
 4. ```11. View/change other settings...``` taper 11 et entrer. Ensuite suivre les instructions pour chaque paramètre. Attention lorsqu'un paramètre est validé on revient au menu initial, il faut donc revenir dans ```11. View/change other settings...```
 
 | Paramètre  | Valeur |
