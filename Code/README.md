@@ -79,7 +79,7 @@ Glisser déposer sync_network_time.sh dans /home/pi/wittypi
 Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
 ```
 chmod 777 Agrocam
-chmod 777 sync_network_time.sh
+sudo chmod 777 /home/pi/wittypi/sync_network_time.sh
 sed -i -e 's/\r$//' agrocam.py
 sed -i -e 's/\r$//' credentials.py
 sed -i -e 's/\r$//' agrocam_schedule.wpi
@@ -88,24 +88,9 @@ sed -i -e 's/\r$//' sync_network_time.sh
 **Attention :** Le script agrocam.py envoie la commande ```sudo shutdown -h now``` à la fin qui éteint l'Agrocam. Pour débugger le script (c'est-à-dire reprendre la main dessus) il est recommandé de commenter cette ligne _cf. partie 7_
 
 ## 2.2 Les credentials
-Maintenant on va déposer dans un fichier séparé du script les variables qui permettent de se connecter au serveur FTP où seront envoyées et stockées les photos.
+Maintenant on va déposer envoyer au Raspberry un fichier séparé du script et qui contient les variables qui permettent de se connecter au serveur FTP où seront envoyées et stockées les photos. Le fichier disponible sur le repository est donné comme exemple. Si vous souhaitez envoyer vos photos sur agrocam.agrotic.org pour les visualiser, contactez Basile Ploteau (basile.ploteau@supagro.fr) pour vous fournir un fichier credentials pour votre Agrocam.
 
-Depuis WinSCP, glisser déposer credentials.py dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password,url). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. 
-
-Pour l'url, il faut changer les "id" pour déposer les fichiers sur le FTP de la plateforme Agrocam. Il s'agit d'une chaine de 8 caractères qui vous a été communiquée à la création de votre Agrocam sur la plateforme.
-
-Le fichier peut aussi être crée depuis le terminal :
-```
-touch .env
-sudo nano .env
-```
-Contenu de .env
-```
-hostname = ""
-user = ""
-password =""
-url="STOR /data/id/id"
-```
+Depuis WinSCP, glisser déposer credentials.py dans ```/home/pi```. 
 
 # 3. Programmer l'allumage de l'Agrocam avec la carte WittyPi
 A partir de cette étape, cette branche diffère fortement de la branche main. On va pouvoir paramétrer l'allumage du raspberry grâce à la carte Witty Pi 4
