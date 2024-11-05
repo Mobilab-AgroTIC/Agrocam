@@ -1,4 +1,4 @@
-Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et la carte Witty Pi 3. 
+Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et la carte Witty Pi 4. 
 
 Vous devriez avoir le matériel suivant : 
 
