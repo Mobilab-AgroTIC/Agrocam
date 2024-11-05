@@ -35,7 +35,7 @@ Pour modifier les paramètres d'APN vous devrez :
 - Attendez quelques secondes, ouvrez un nouvel onglet et faite une recherche pour vérifier si vous êtes bien connecté.
 
 # 2. Préparer le Raspberry Pi Zero 
-## 2.2. Initialiser le Raspberry Pi Zero
+## 2.1. Initialiser le Raspberry Pi Zero
 - Installer Raspberry Pi imager https://www.raspberrypi.com/software/
 - Ouvrir Raspberry Pi imager
 - Insérer la carte SD du raspberry dans le PC
@@ -59,11 +59,11 @@ Pour modifier les paramètres d'APN vous devrez :
 4. Cliquez sur **enregistrer** puis sur **Oui** puis une dernière fois sur **Oui**
 5. L'écriture peut prendre du temps, n'hésitez pas à faire les installations de la partie 2.3 en attendant
 
-## 2.3. Installer les logiciels pour la suite
+## 2.2. Installer les logiciels pour la suite
 - Installer [WinSCP](https://winscp.net/eng/download.php) sur votre PC. Ce logiciel permet de se connecter au raspberry en SSH, de parcourir ses fichier et d'interagir avec le terminal de commandes.
 - Installer [Network analyzer](https://play.google.com/store/apps/details?id=net.techet.netanalyzerlite.an&hl=fr&gl=US) sur votre smartphone. Cette application permet de scaner un réseau wifi et de trouver les appareils (leur adresse IP) qui y sont connectés.
 
-## 2.4. Réaliser les branchements
+## 2.3. Réaliser les branchements
 - Insérer la carte SD dans le raspberry
 - Brancher la Picam. Attention au sens de branchement de la nappe de cable _(cf. photo ci-dessous)_. Attention les connecteurs sont fragiles, à manipuler avec précautions.
 <img src="https://www.raspberrypi.com/app/uploads/2016/05/2016-05-15-16.32.19-768x576.jpg" width=20% height=20%>
@@ -72,7 +72,7 @@ Pour modifier les paramètres d'APN vous devrez :
 - Brancher l'alimentation sur le port **"PWR IN"** _cf. photo ci-dessous_
 <img src="https://user-images.githubusercontent.com/93132152/169502193-72963340-17c8-46ee-b322-8d32348ea31f.png"  width=30% height=30%>
 
-## 1.5. Se connecter au Raspberry depuis un PC
+## 2.4. Se connecter au Raspberry depuis un PC
 
 - Connecter un smartphone au réseau du dongle 4G (avec SSID et mot de passe précédemment paramétrés)
 - Avec l'application mobile Network Analyzer cliquer sur "Scan" et identifier l'adresse IP du raspberry Pi:
@@ -80,22 +80,25 @@ Pour modifier les paramètres d'APN vous devrez :
 
 - Sur PC, ouvrir WinSCP et créer une nouvelle session de connexion au Raspberry <img src="https://user-images.githubusercontent.com/93132152/170044340-fa6d77ba-f569-444e-ae02-0d12b61ad0e1.png"  width=10% height=10%>. Saisir les informations suivantes : Protocole de fichier : **SFTP**; Nom d'hôte : **IP obtenue sur Network analyzer**; Nom d'utilisateur : **pi** (sauf changement); Mot de passe : **défini partie 2**
 - Depuis WinSCP ouvrir Putty <img src="https://user-images.githubusercontent.com/93132152/170045029-048df6d8-c55e-4bcc-b4fd-a2b8707ec859.png"  width=2% height=2%>
-- Un terminal de commande s'ouvre et vous demande un mot de passe. Il s'agit toujours du même défini à la partie 2. Le mot de passe ne s'affiche pas mais appuyer su r "entrer" et ça marche.
+- Un terminal de commande s'ouvre et vous demande un mot de passe. Il s'agit toujours du même défini à la partie 2. Le mot de passe ne s'affiche pas mais appuyer sur "entrée" et ça marche. Attention, le Ctrl+V ne fonctionne pas sur le terminal de commande. Si vous souhaitez coller quelque chose, il faudra simplement faire un clic droit.
 
-## 2.6. Installer les librairies 
+## 2.5. Installer les librairies 
 
-### 2.6.1 Installer smbus
 ```
-sudo apt-get install python3-pip
-pip install smbus
+sudo apt install python3-smbus
+sudo apt install python3-picamera2
 ```
+Par moment l'installation s'arrête pour vous demander si vous souhaitez continuer. Tapez "Y" puis "entrée" et l'installation continue.
 
-### 2.6.2 Activer le bus I2C (à vérifier si necessaire)
-Ouvrir les paramètres ```sudo raspi-config``` puis suivre les étapes :```3 Interface Options/I2C/YES/Finish```
+## 2.6 Ajouter d'autres SSID (optionnel)
+Pour l'instant vous ne pouvez accéder à votre raspberry qu'en vous connectant en SSH par l'intermédiaire du Dongle 4G. Cela est risqué car si le dongle ne fonctionne plus, vous ne pourrez plus accéder au raspberry. On vous recommande donc d'ajouter d'autres SSID (votre partage de connexion par exemple. Pour cela :
+- ```nmcli device wifi list``` permet de visualiser les SSID disponibles
+- ```nmcli device wifi connect "SSID" password "PASSWORD"```
+- Attention lorsque le raspberry a réussi à se connecter à un autre wifi, votre terminal putty ne communique plus avec le raspberry car votre PC et le raspberry ne sont plus sur le même réseau. 
   
 # 3 Ajouter les fichiers sur le raspberry pi
 Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
-## 3.1 Créer le répertoire pour les photo (à vérifier si necessaire)
+## 3.1 Créer le répertoire pour les photo
 ```
 sudo mkdir Agrocam
 ```
@@ -108,7 +111,7 @@ Depuis l'interface de WinSCP déplasser les fichiers suivants. Le fichier agroca
 - Glisser déposer credentials.py dans /home/pi
 Donner tous les droits au script _(première ligne ci-dessous)_ et effacer les "\r" et "r" de fin de ligne _(2e ligne ci-dessous, cela n'est pas toujours nécessaire mais ces caractère spéciaux on pu être ajouté si le script a été édité sur un outil Windows, Visual Studio Code par exemple)_
 ```
-chmod 644 Agrocam
+sudo chmod 777 Agrocam
 sed -i -e 's/\r$//' agrocam.py
 sed -i -e 's/\r$//' credentials.py
 ```
@@ -121,8 +124,7 @@ Installer WittyPi avec les lignes de commandes suivantes.
 wget http://www.uugear.com/repo/WittyPi4/install.sh
 sudo sh install.sh
 ```
-Puis éteindre le raspberry avec ```sudo shutdown -h now``` puis passer à l'étape d'après.
-Une fois le raspberry éteint, débrancher l'alimentation électrique.
+Puis éteindre le raspberry avec ```sudo shutdown -h now```. Attendre que la LED verte s'eteigne définitivement puis débrancher l'alimentation électrique. 
 
 ## 4.2 Connecter la carte WittyPi 4 au Raspberry
 Insérer une pile 3V (si possible rechargeable et fourni avec la carte WittyPi 3) dans l'emplacement prévu à cette effet sur la carte Witty Pi
@@ -133,11 +135,11 @@ Les broches s'emboitent de la manière suivante.
 
 
 ## 4.3 Paramétrer le WittyPi
-Brancher l'alimentation électrique directement sur la carte Witty Pi 4(l'alimentation du raspberry a été débranché en 3.1), c'est cette carte qui va ensuite gérer l'alimentation du raspberry. Pour que le raspberry démarre (en attendant qu'on lui donne un planing de mise en route), il faut appuyer sur le bouton poussoir de la carte Witty Pi. Lors de cette première mise en route, il est possible que le Dongle 4G ne s'allume pas. Il suffit de le débrancher et rebrancher.
+Brancher l'alimentation électrique directement sur la carte Witty Pi 4 (l'alimentation du raspberry a été débranché en 4.1), c'est cette carte qui va ensuite gérer l'alimentation du raspberry. Pour que le raspberry démarre (en attendant qu'on lui donne un planing de mise en route), il faut appuyer sur le bouton poussoir de la carte Witty Pi. Lors de cette première mise en route, il est possible que le Dongle 4G ne s'allume pas. Il suffit de le débrancher et rebrancher.
 
 <img src="https://user-images.githubusercontent.com/93132152/197518071-94065c91-ed4a-4cee-8cfb-99ead7fd86a6.jpg" width=30% height=30%>
 
-Se connecter au Raspberry comme dans la partie 1.5, ouvrir le terminal de commande et démarrer WittyPi avec la commande suivante :
+Se connecter au Raspberry comme dans la partie 2.4, ouvrir le terminal de commande et démarrer WittyPi avec la commande suivante :
 ```
 sudo ./wittypi/wittyPi.sh
 ```
@@ -178,6 +180,7 @@ Type=idle
 ExecStart=/usr/bin/python3 /home/pi/agrocam.py > /home/pi/myscript.log 2>&1
 WorkingDirectory=/home/pi
 User=pi
+ExecStartPre=/bin/sleep 10
 
 [Install]
 WantedBy=multi-user.target
