@@ -4,13 +4,38 @@ Vous devriez avoir le matériel suivant :
 
 <img src="https://user-images.githubusercontent.com/93132152/190139861-a0678fe1-11a7-469f-9545-627c0b963aad.png" width=30% height=30%>
 
-# 1. Préparer le raspberry l'Agrocam 
-## 1.1. Paramétrer le dongle 4G
+Pour commencez ce tutoriel et si vous souhaitez envoyer vos images sur agrocam.agroti.org afin de les visualiser vous devez déclarer votre Agrocam. Pour l'instant, il n'y a pas de procédure automatisée pour la déclaration de votre Agrocam. Il faudra donc envoyer un mail à basile.ploteau@supagro.fr en indiquant que vous souhaitez créer une Agrocam. Il vous renverra une chaine de 8 caractères qui sera le nom de votre Agrocam. Il faudra conserver ce nom car il sera utile à différents moments du tutoriel.
+
+# 1. Préparer le dongle 4G
+## 1.1. La carte SIM
+Pour fonctionner de manière connectée l'Agrocam a besoin de connexion Wifi. Dans ce tutoriel vous suiverez des étapes qui permettent d'intégrer une clé 4G dans l'Agrocam qui produit directement un réseau Wifi. Pour fonctionner, cette clé 4G a besoin d'une carte SIM (les mêmes qu'il y a dans les téléphones). Un forfait de 5 Go/mois sera largement suffisant pour envoyer une photo par jour, il existe maintenant des forfaits abordables. Vous pouvez choisir de passer par n'importe quel opérateurs. Jusqu'à maintenant l'Agrocam a été testée avec les réseaux de Orange et de Bouygues.
+
+## 1.2. Paramétrer le dongle 4G
 Avant d'insérer la carte SIM dans le Dongle 4G, assurez vous d'avoir supprimer le code PIN. Pour retirer le code PIN de la carte SIM il faut insérer la carte dans un téléphone et se rendre dans les paramètres de ce dernier pour désactiver la sécurité.
 
-Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son mot de passe. Le SSID et mot de passe par défaut peuvent aussi être laissé tels quels. Ces deux informations (SSID et mot de passe) sont à conserver pour établir la connexion entre le Raspberry et le dongle par la suite.
+Vous pouvez essayer d'insérer la carte SIM dans le Dongle 4G et de brancher la clé 4G à une alimentation USB. Ensuite connectez vous à votre clé 4G en wifi avec un ordinateur ou un smartphone (le nom de la clé (son SSID) et son mot de passe d'usine (souvent : "1234567890" sont indiqués sur le dos de la clé 4G). 
+Vous devriez avoir accès à internet, faite une recherche sur Google pour vérifier que c'est bien le cas. Si tout fonctionne vous pouvez passer à la partie 2. Il est possible que malgré une carte SIM fonctionnelle la connection à internet ne se fasse pas. Cela est du à un problème d'APN mal configuré sur la clé 4G.
+Pour modifier les paramètres d'APN vous devrez :
 
-## 1.2. Initialiser le Raspberry Pi
+- Vous connecter au réseau Wifi du dongle 4G avec votre PC
+- Vous connecter à l'interface de paramétrage du dongle. Pour cela vous devez taper dans un navigateur quelconque l'adresse IP locale de votre Dongle. Elle est souvent indiquée au dos du Dongle et ressembe à quelque chose comme : 192.168.100.1
+- Le dongle vous demande des identifiants, par défaut Username : "admin" et Password : "admin"
+
+<img src="https://github.com/user-attachments/assets/52e9c820-1c3b-47da-aa35-3775949c7060" width=30% height=30%>
+
+- Une fois connecté vous pouvez aller dans Advanced>APN Setting
+
+<img src="https://github.com/user-attachments/assets/2017d0d3-d322-47d1-9a12-6fb6dc42b77a" width=30% height=30%>
+
+- Vous cochez "profile 1" à la place de "default". Ensuite le remplissage du formulaire dépend de chaque opérateur. En général chez Orange il n'y a qu'un seul APN donc rarement des problèmes mais chez leur concurents il faut souvent tester différents APN. Voici les paramètres qui ont fonctionné pour une carte SIM Bouygues. Attention l'APN peut différer en fonction du forfait que vous avez pris.
+
+<img src="https://github.com/user-attachments/assets/11915d70-7c86-4cdb-b7a4-5b80e9e11013" width=30% height=30%>
+
+- Une fois le formulaire créé cliquez sur "Save Configuration" puis "Execute"
+- Attendez quelques secondes, ouvrez un nouvel onglet et faite une recherche pour vérifier si vous êtes bien connecté.
+
+# 2. Préparer le Raspberry Pi Zero 
+## 2.2. Initialiser le Raspberry Pi Zero
 - Installer Raspberry Pi imager https://www.raspberrypi.com/software/
 - Ouvrir Raspberry Pi imager
 - Insérer la carte SD du raspberry dans le PC
@@ -22,15 +47,22 @@ Ensuite, suivre la notice d'utilisation du dongle pour éditer son SSID et son m
 3. Sélectionner l'espace de stockage correspondant à la carte SD
 
 
-- Puis en cliquant sur **Suivant** un message demande si nous souhaitons modifier les paramètres. Cliquez sur **Modifier réglages**, une fenêtre s'ouvre:
-    - Activer le SSH
-    - Définir un mot de passe pour le Raspberry et un nom d'utilisateur (conserver "pi" pour les deux). Vous pouvez aussi donner comme mot de passe la chaine de 8 caractères qui vous a été attribué lors de la déclaration de l'Agrocam sur le serveur.
-    - Définir les paramètres Wifi (SSID, Password, pays (FR)) du dongle 4G. ** Bien penser à modifier le paramètre Wireless LAN country avec "FR"**
-<img src="https://user-images.githubusercontent.com/93132152/169276815-ce32ffe7-997c-40b8-b6e8-bc613ae2f673.png" width=30% height=30%>
-- Cliquez sur **enregistrer** puis sur **Oui**
-- L'écriture peut prendre du temps, n'hésitez pas à faire les installations de la partie 1.3 en attendant
+	- Puis en cliquant sur **Suivant** un message demande si vous souhaitez modifier les paramètres. Cliquez sur **Modifier réglages**, une fenêtre s'ouvre:
+<img src="https://github.com/user-attachments/assets/96acac39-7f0a-49f7-8464-fd5d51cb4b8" width=30% height=30%>
 
-## 1.3. Installer les logiciels pour la suite
+    		- **Dans General** : Définir un mot de passe pour le Raspberry et un nom d'utilisateur (conserver "pi" pour les deux). Vous pouvez aussi donner comme mot de passe la chaine de 8 caractères qui vous a été attribué lors de la déclaration de l'Agrocam sur le serveur, cela sécurisera votre raspberry s'il devait tomber entre de mauvaises mains.
+   
+    		- **Dans General** : Définir les paramètres Wifi (SSID, Password, pays (FR)) du dongle 4G. Bien penser à vérifier que le "pays Wifi" est en "FR"
+   
+    		- **Dans Service** : Activez le SSH et sélectionnez "utiliser un mot de passe pour l'authentification"
+
+<img src="https://github.com/user-attachments/assets/34c68aef-dbbf-4c92-9d02-3b70c565d704" width=30% height=30%>
+
+<img src="https://user-images.githubusercontent.com/93132152/169276815-ce32ffe7-997c-40b8-b6e8-bc613ae2f673.png" width=30% height=30%>
+	- Cliquez sur **enregistrer** puis sur **Oui** puis une dernière fois sur **Oui**
+	- L'écriture peut prendre du temps, n'hésitez pas à faire les installations de la partie 1.3 en attendant
+
+## 2.3. Installer les logiciels pour la suite
 - Installer [WinSCP](https://winscp.net/eng/download.php) sur votre PC. Ce logiciel permet de se connecter au raspberry en SSH, de parcourir ses fichier et d'interagir avec le terminal de commandes.
 - Installer [Network analyzer](https://play.google.com/store/apps/details?id=net.techet.netanalyzerlite.an&hl=fr&gl=US) sur votre smartphone. Cette application permet de scaner un réseau wifi et de trouver les appareils (leur adresse IP) qui y sont connectés.
 
