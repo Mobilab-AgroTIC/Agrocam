@@ -17,7 +17,7 @@ Une carte [Witty Pi 4](https://www.gotronic.fr/art-carte-alim-et-rtc-witty-pi-4-
 | Composant | Montant |
 | ------------- | ------------- |
 | [Raspberry Pi zero](https://fr.aliexpress.com/item/1005002762721660.html?_randl_currency=EUR&_randl_shipto=FR&src=google&aff_fcid=f2c9b3fef8f449de83d249fa6d53ca15-1657007543491-08844-UneMJZVf&aff_fsk=UneMJZVf&aff_platform=aaf&sk=UneMJZVf&aff_trace_key=f2c9b3fef8f449de83d249fa6d53ca15-1657007543491-08844-UneMJZVf&terminal_id=0e5bf68749b0416b9d7676273b58898a&afSmartRedirect=y)  | 20 €  |
-| [Picam](https://www.gotronic.fr/art-camera-12-mpx-sc0872-36588.htm) | 10 €  |
+| [Picam](https://www.gotronic.fr/art-camera-12-mpx-wide-sc0874-36590.htm) | 47 €  |
 | [Witty Pi 4](https://www.gotronic.fr/art-carte-alim-et-rtc-witty-pi-4-35473.htm)  | 38 € |
 | [Dongle 4G](https://fr.aliexpress.com/item/1005004055536615.html?spm=a2g0o.productlist.0.0.598076b34EWXMu&algo_pvid=d27b7dc1-f063-45e8-842d-b50b623dfcb6&algo_exp_id=d27b7dc1-f063-45e8-842d-b50b623dfcb6-6&pdp_ext_f=%7B%22sku_id%22%3A%2212000028196486635%22%7D&pdp_npi=1%40dis%7CEUR%7C%7C14.7%7C%7C%7C%7C%7C%400b0a187916512350350418464e6aef%7C12000028196486635%7Csea) | 15 €  |
 | [Servomoteur](https://www.gotronic.fr/art-servomoteur-digital-miniature-ft90b-30604.htm) | 2 €  |
