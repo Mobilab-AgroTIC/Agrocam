@@ -1,0 +1,13 @@
+[Unit]
+Description=My Script Service
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/python3 /home/pi/agrocam.py > /home/pi/myscript.log 2>&1
+WorkingDirectory=/home/pi
+User=pi
+ExecStartPre=/bin/sleep 10
+
+[Install]
+WantedBy=multi-user.target
