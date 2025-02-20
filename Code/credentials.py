@@ -1,3 +1,4 @@
+from datetime import time
 ftp_server = "agrocam.agrotic.org"
 ftp_username = "user@agrotic.org"
 ftp_password = "password"
