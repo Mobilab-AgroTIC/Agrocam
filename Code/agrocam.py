@@ -49,10 +49,8 @@ def angle_to_percent (angle) :
 def prendre_photo(date):
     camera.start_preview()
     camera.start()
-    sleep(2)
-
     camera.set_controls({"AfMode": 1}) 
-    sleep(2)
+    sleep(1)
     camera.capture_file('/home/pi/Agrocam/photo'+date+'.png')
     camera.stop_preview()
     camera.close()
