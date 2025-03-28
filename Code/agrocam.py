@@ -47,7 +47,7 @@ def prendre_photo(date):
     camera.start_preview()
     camera.start()
     sleep(2)
-    camera.capture_file('/home/pi/Agrocam/photo'+date+'.jpg')
+    camera.capture_file('/home/pi/Agrocam/photo'+date+'.png')
     camera.stop_preview()
     camera.close()
 
@@ -58,10 +58,10 @@ def envoyer_sur_ftp(date):
     bus = smbus.SMBus(1)
     voltageInt=str(bus.read_byte_data(0x08,1))
     voltageDec=str(bus.read_byte_data(0x08,2))
-    with open('/home/pi/Agrocam/photo'+date+'.jpg', 'rb') as fichier:
-        ftp.storbinary('STOR /data/'+ credentials.name +'/'+credentials.name+'_'  + date + '_' + voltageInt + '_' + voltageDec + '.jpg',fichier)
+    with open('/home/pi/Agrocam/photo'+date+'.png', 'rb') as fichier:
+        ftp.storbinary('STOR /data/'+ credentials.name +'/'+credentials.name+'_'  + date + '_' + voltageInt + '_' + voltageDec + '.png',fichier)
     ftp.quit()
-    dest_path="sudo mv /home/pi/Agrocam/photo"+date+".jpg /home/pi/Agrocam/"+credentials.name+"_"  + date + "_" + voltageInt + "_" + voltageDec + ".jpg"
+    dest_path="sudo mv /home/pi/Agrocam/photo"+date+".png /home/pi/Agrocam/"+credentials.name+"_"  + date + "_" + voltageInt + "_" + voltageDec + ".png"
     os.system(dest_path)
 
 def set_startup_time(date, hour, minute, second):
