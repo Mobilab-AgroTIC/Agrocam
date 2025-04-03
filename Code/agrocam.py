@@ -22,11 +22,13 @@ camera = Picamera2()
 
 # Configuration for rotating picture
 # Ci-dessous d'anciennes config qui ne minimise la taille des images (<500 ko)
-# camera_config = camera.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (640, 480)}, display="lores",transform=Transform(180))
-# camera_config = camera.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (640, 480)}, display="lores")
+# camera_config = camera.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (640, 480)}, display="main",transform=Transform(180))
+camera_config = camera.create_still_configuration(main={"size": (4608, 2592)}, lores={"size": (640, 480)}, display="main")
 # La config ci-dessous maximise la taille et donc la qualité de l'image
-camera_config = camera.create_still_configuration(main={"size": (4608, 2592)}, lores={"size": (640, 480)}, display="lores")
 camera.configure(camera_config)
+
+camera.set_controls({"AfMode": 2}) #Autofocus 
+#camera.set_controls({"LensPosition": 2.0})
 # Configuration du servo
 frequence = 50
 
@@ -48,8 +50,8 @@ def angle_to_percent (angle) :
 
 def prendre_photo(date):
     camera.start_preview()
-    camera.start()
-    camera.set_controls({"AfMode": 1}) 
+    camera.start() 
+     
     sleep(1)
     camera.capture_file('/home/pi/Agrocam/photo'+date+'.png')
     camera.stop_preview()
