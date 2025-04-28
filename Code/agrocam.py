@@ -5,10 +5,10 @@ from picamera2 import Picamera2, Preview
 # from libcamera import Transform
 from time import sleep
 from ftplib import FTP
+import requests
 from datetime import datetime, timedelta
-import os
+import subprocess
 import credentials as credentials
-import smbus
 
 
 # Numéro de la broche GPIO à utiliser pour le servo moteur
@@ -27,7 +27,7 @@ camera_config = camera.create_still_configuration(main={"size": (4608, 2592)}, l
 # La config ci-dessous maximise la taille et donc la qualité de l'image
 camera.configure(camera_config)
 
-camera.set_controls({"AfMode": 2}) #Autofocus 
+camera.set_controls({"AfMode": 2}) #Autofocus  
 #camera.set_controls({"LensPosition": 2.0})
 # Configuration du servo
 frequence = 50
@@ -57,27 +57,53 @@ def prendre_photo(date):
     camera.stop_preview()
     camera.close()
 
+def envoyer_http(date):
+    url = 'https://webhook.site/be28a5cf-36e9-4a30-bf66-fdeff104e54d'
+    image_path = '/home/pi/Agrocam/photo'+date+'.png'
+
+    metadata = {
+        'key': 'your_key_value',
+        'power_level': 'battery_percentage',
+        'comment': 'optional_comment',
+        'date_acquisition': ' acquisition_date_string',
+        'date_reception': 'reception_date_string',
+        'longitude': 'longitude_value',
+        'latitude': 'latitude_value',
+        'temperature_device': 'temperature_value'
+    }
+
+    with open(image_path, 'rb') as f:
+        files = {'photo': ( 'photo.jpg', f, 'image/jpeg')} # 'photo.jpg' is the filename, f is the file object, 'image/jpeg' is the content type
+        data = metadata # The metadata is sent as form fields
+
+        response = requests.post(url, files=files, data=data)
+
+    if response.status_code == 200:
+        print("Photo and metadata sent successfully!")
+    else:
+        print(f"Error sending data: {response.status_code}")
+        print(response.text)
+
+
 def envoyer_sur_ftp(date):
     ftp = FTP(credentials.ftp_server)
     ftp.login(credentials.ftp_username, credentials.ftp_password)
     
-    bus = smbus.SMBus(1)
-    voltageInt=str(bus.read_byte_data(0x08,1))
-    voltageDec=str(bus.read_byte_data(0x08,2))
+    command = subprocess.run(['bash', '-c', 'source /home/pi/wittypi/utilities.sh && get_input_voltage'],capture_output=True,text=True)
+    voltage = command.stdout.strip()
     with open('/home/pi/Agrocam/photo'+date+'.png', 'rb') as fichier:
-        ftp.storbinary('STOR /data/'+ credentials.name +'/'+credentials.name+'_'  + date + '_' + voltageInt + '_' + voltageDec + '.png',fichier)
+        ftp.storbinary('STOR /data/'+ credentials.name +'/'+credentials.name+'_'  + date + '_' + voltage + '.png',fichier)
     ftp.quit()
-    dest_path="sudo mv /home/pi/Agrocam/photo"+date+".png /home/pi/Agrocam/"+credentials.name+"_"  + date + "_" + voltageInt + "_" + voltageDec + ".png"
-    os.system(dest_path)
+    cmd="sudo mv /home/pi/Agrocam/photo"+date+".png /home/pi/Agrocam/"+credentials.name+"_"  + date + "_" + voltage + ".png"
+    subprocess.run(['bash', '-c', cmd],capture_output=True,text=True)
 
 def set_startup_time(date, hour, minute, second):
-    command_set_startup = f"sudo bash -c 'source /home/pi/wittypi/utilities.sh && set_startup_time {date} {hour} {minute} {second}'"
-    command_net_to_system = f"sudo bash -c 'source /home/pi/wittypi/utilities.sh && net_to_system'"
-    command_system_to_rtc = f"sudo bash -c 'source /home/pi/wittypi/utilities.sh && system_to_rtc'"
+    command_set_startup = f"sudo bash -c 'source /home/pi/wittypi/utilities.sh && set_startup_time {date} {hour} {minute} {second}'"    
+    command_net_to_system = subprocess.run(['bash', '-c', 'source /home/pi/wittypi/utilities.sh && net_to_system'],capture_output=True,text=True)
+    command_system_to_rtc = subprocess.run(['bash', '-c', 'source /home/pi/wittypi/utilities.sh && system_to_rtc'],capture_output=True,text=True)
+    subprocess.run(['bash', '-c',command_set_startup ],capture_output=True,text=True)
+    
     print(command_set_startup)
-    os.system(command_net_to_system)
-    os.system(command_system_to_rtc)
-    os.system(command_set_startup)
 
 def calculate_next_startup_time(trigger_times):
     now = datetime.now()
@@ -103,8 +129,25 @@ def calculate_next_startup_time(trigger_times):
     second = next_startup.second
 
     return day, hour, minute, second
+    
+def setup_wittypi():
+    pulsing_interval = 13
+    white_led_duration=7
+    recovery_voltage=20
+    threshold_voltage=70
+    cmd_pulse = f"""sudo bash -c 'I2C_BUS=1;  source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS $I2C_CONF_PULSE_INTERVAL {credentials.pulsing_interval}'"""
+    cmd_led = f"""sudo bash -c '  I2C_BUS=1; source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS $I2C_CONF_BLINK_LED {credentials.white_led_duration}'"""
+    cmd_recovery_voltage=f"""sudo bash -c '  I2C_BUS=1; source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS  $I2C_CONF_RECOVERY_VOLTAGE {credentials.recovery_voltage}'"""
+    cmd_threshold_voltage = f"""sudo bash -c '  I2C_BUS=1; source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS $I2C_CONF_LOW_VOLTAGE {credentials.threshold_voltage}'"""
+
+    subprocess.run(cmd_led, shell=True, capture_output=True, text=True)
+    subprocess.run(cmd_pulse, shell=True, capture_output=True, text=True)
+    subprocess.run(cmd_recovery_voltage, shell=True, capture_output=True, text=True)
+    subprocess.run(cmd_threshold_voltage, shell=True, capture_output=True, text=True)
+
 
 def main():
+    setup_wittypi()
     sleep(30) # waiting for wifi
     initialize_GPIO()
     pwm = GPIO.PWM(pwm_gpio,frequence)
@@ -122,6 +165,7 @@ def main():
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
+        #envoyer_http(current_date)
         envoyer_sur_ftp(current_date)
         print("Envoi sur FTP terminé")
         sleep(1)  # Attendre avant de répéter le traitement
@@ -141,7 +185,7 @@ def main():
             print("ControlPin is not LOW. i = ", i)
             i += 1
         GPIO.cleanup()
-        os.system("sudo shutdown -h now")
+        subprocess.run(['sudo', 'shutdown', '-h', 'now'])
 
 if __name__ == "__main__":
     main()
