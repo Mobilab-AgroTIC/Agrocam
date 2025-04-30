@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+**Ce readme n'est plus maintenu à jour, pour suivre le tutoriel aller sur https://mobilab.agrotic.org/2025/02/18/agrocam/**
 Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et la carte Witty Pi 4. 
 
 Vous devriez avoir le matériel suivant : 
@@ -6,9 +6,9 @@ Vous devriez avoir le matériel suivant :
 <img src="https://user-images.githubusercontent.com/93132152/190139861-a0678fe1-11a7-469f-9545-627c0b963aad.png" width=30% height=30%>
 
 Pour commencez ce tutoriel et si vous souhaitez envoyer vos images sur agrocam.agroti.org afin de les visualiser vous devez déclarer votre Agrocam. Pour l'instant, il n'y a pas de procédure automatisée pour la déclaration de votre Agrocam. Il faudra donc envoyer un mail à basile.ploteau@supagro.fr en indiquant que vous souhaitez créer une Agrocam. Il vous renverra une chaine de 8 caractères qui sera le nom de votre Agrocam ainsi que le fichiers credentials.py utile dans la suite du tutoriel. Il faudra conserver ce nom car il sera utile à différents moments du tutoriel.
-=======
+
 Ce Readme vous accompagne sur les étapes à accomplir pour paramétrer le Raspberry et l'Arduino promini 3,3 V. Le tutoriel est découpé en 3 grandes étapes : 
->>>>>>> 7d9094ac8729f9ec0921c6fddb275176c9c2e686
+
 
 # 1. Préparer le dongle 4G
 ## 1.1. La carte SIM
@@ -17,7 +17,6 @@ Pour fonctionner de manière connectée l'Agrocam a besoin de connexion Wifi. Da
 ## 1.2. Paramétrer le dongle 4G
 Avant d'insérer la carte SIM dans le Dongle 4G, assurez vous d'avoir supprimé le code PIN. Pour retirer le code PIN de la carte SIM il faut insérer la carte dans un téléphone et se rendre dans les paramètres de ce dernier pour désactiver la sécurité.
 
-<<<<<<< HEAD
 Vous pouvez essayer d'insérer la carte SIM dans le Dongle 4G et de brancher la clé 4G à une alimentation USB. Ensuite connectez vous à votre clé 4G en wifi avec un ordinateur ou un smartphone (le nom de la clé (son SSID) et son mot de passe d'usine (souvent : "1234567890" sont indiqués sur le dos de la clé 4G). 
 Vous devriez avoir accès à internet, faite une recherche sur Google pour vérifier que c'est bien le cas. Si tout fonctionne vous pouvez passer à la partie 2. Il est possible que malgré une carte SIM fonctionnelle la connection à internet ne se fasse pas. Cela est du à un problème d'APN mal configuré sur la clé 4G.
 Pour modifier les paramètres d'APN vous devrez :
@@ -27,7 +26,6 @@ Pour modifier les paramètres d'APN vous devrez :
 # 1. Programmer l'Agrocam 
 ## 1.1. Paramétrer le dongle 4G
 Avant d'insérer la carte SIM dans le Dongle 4G, assurez vous d'avoir supprimer le code PIN. Pour retirer le code PIN de la carte SIM il faut insérer la carte dans un téléphone et se rendre dans les paramètres de ce dernier pour désactiver la sécurité.
->>>>>>> 7d9094ac8729f9ec0921c6fddb275176c9c2e686
 
 - Vous connecter au réseau Wifi du dongle 4G avec votre PC
 - Vous connecter à l'interface de paramétrage du dongle. Pour cela vous devez taper dans un navigateur quelconque l'adresse IP locale de votre Dongle. Elle est souvent indiquée au dos du Dongle et ressembe à quelque chose comme : 192.168.100.1
@@ -100,7 +98,6 @@ Avant d'insérer la carte SIM dans le Dongle 4G, assurez vous d'avoir supprimer 
 sudo apt install python3-smbus
 sudo apt install python3-picamera2
 ```
-<<<<<<< HEAD
 Par moment l'installation s'arrête pour vous demander si vous souhaitez continuer. Tapez "Y" puis "entrée" et l'installation continue.
 
 ## 2.6 Ajouter d'autres SSID (optionnel)
@@ -128,7 +125,6 @@ sudo cp -R /home/pi/.local/lib/python3.9/site-packages/dotenv /usr/lib/python3.9
 ```
 *On déplace la librairie pour qu'elle soit trouvée en démarrage automatique*
 ## 1.7. Ajouter les fichiers sur le raspberry pi
->>>>>>> 7d9094ac8729f9ec0921c6fddb275176c9c2e686
 Cette opération peut se faire depuis WinSCP en glissant et déposant les fichiers
 ## 3.1 Créer le répertoire pour les photo
 ```
@@ -158,7 +154,6 @@ sudo sh install.sh
 ```
 Puis éteindre le raspberry avec ```sudo shutdown -h now```. Attendre que la LED verte s'eteigne définitivement puis débrancher l'alimentation électrique. 
 
-<<<<<<< HEAD
 ## 4.2 Connecter la carte WittyPi 4 au Raspberry
 Insérer une pile 3V (si possible rechargeable et fourni avec la carte WittyPi 3) dans l'emplacement prévu à cette effet sur la carte Witty Pi
 
@@ -208,7 +203,6 @@ Pour relancer le raspberry : ```sudo reboot```, il devrait s'allumer, actionner 
 ## 1.10. Debugger l'Agrocam
 Le script ```Agrocam_raspberry.sh``` éteint l'Agrocam à la fin de son exécution, une fois cette partie 1 terminée il serait donc impossible de se connecter au raspberry en SSH car le script ```Agrocam_raspberry.sh``` est lancé à chaque démarrage _(cf. partie 1.8)_. La solution consiste donc à empêcher que le script n'aille jusqu'au bout lorsqu'on le désire. Pour celà il y a une boucle en python à la fin du script qui tourne indéfiniement si le port GPIO 24 est "TRUE" donc connecté au 3,3V **(à l'aide du cavalier)**:
 ```
-python << END_OF_PYTHON
 import time
 import RPi.GPIO as GPIO
 controlPin=24
@@ -219,7 +213,6 @@ while (GPIO.input(controlPin) == 1) :
 	time.sleep(5)
 	print("ControlPin is not LOW. i = ", i)
 	i += 1
-END_OF_PYTHON
 ```
 
 # 2. Programmer l'allumage de l'Agrocam
@@ -244,13 +237,11 @@ On va se servir d'un arduino mini pour alimenter le Raspberry à intervalles ré
 Par défaut le script va lancer l'allumage approximativement toutes les 8h mais il est possible de modifier cette durée. Pour cela :
 - ouvrir le script
 - Trouver la boucle :
->>>>>>> 7d9094ac8729f9ec0921c6fddb275176c9c2e686
 ```
 for (int i = 1; i <3600 ; i++){ //3600 pour 8h, 3150 avec le recalage
       LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
   }
 ```
-<<<<<<< HEAD
 Une liste de paramètre et de fonctionnalités s'affichent. Dans l'ordre nous allons procéder ainsi :
 1. ```3.Synchronize time``` taper 3 et entrer
 2. ```7. Set low voltage threshold``` taper 7 et entrer puis saisir 7V et entrer
@@ -361,18 +352,14 @@ L'objectif est d'obtenir le câblage comme sur la photo ci-dessous. Il faut le m
 ## 3.2 Cablage des alimentations
 Une fois la breadboard assemblée, connecter les alimentations et le raspberry pi de la manière suivante.
 <img src="https://user-images.githubusercontent.com/93132152/177129906-5c14ac73-49e1-40c9-86d5-b409883ce761.png" width=50% height=50%>
->>>>>>> 7d9094ac8729f9ec0921c6fddb275176c9c2e686
-
 
 Pour effectuer l'alimentation du Raspberry il faut sectionner le cable USB d'alimentation pour accéder aux câbles d'alimentation (rouge et noir).
 Pour brancher les câbles d'alimentation sur la breadboard il faut sertir des connecteurs JST femelle dessus, denombreux tutoriel sont disponibles en ligne pour apprendre à réaliser ces sertissages.
 
 Le câblage final ressemble à ceci : 
 
-<<<<<<< HEAD
 Enfin pour tester le cadrage vous pouvez appuyer à n'importe quel moment sur le bouton poussoir de la Witty Pi 4 pour faire une photo. La caméra démarrera automatiquement à l'heure prédéfinie.
 =======
 <img src="https://user-images.githubusercontent.com/93132152/177128194-5962b5a6-2418-4f7a-bc7e-1afe850e5d92.jpg" width=50% height=50%>
 
 La partie fonctionnelle de l'Agrocam est terminée. Il reste à faire le montage dont le tutoriel se situe [ici](https://github.com/Mobilab-AgroTIC/Agrocam/blob/main/3D%20files/README.md)
->>>>>>> 7d9094ac8729f9ec0921c6fddb275176c9c2e686
