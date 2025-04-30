@@ -8,6 +8,3 @@ pulsing_interval = 20
 white_led_duration=0
 recovery_voltage=0
 threshold_voltage=70
-
-url="https://webhook.site/be28a5cf-36e9-4a30-bf66-fdeff104e54d"
-
