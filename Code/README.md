@@ -20,7 +20,7 @@ Avant d'insérer la carte SIM dans le Dongle 4G, assurez vous d'avoir supprimé 
 Vous pouvez essayer d'insérer la carte SIM dans le Dongle 4G et de brancher la clé 4G à une alimentation USB. Ensuite connectez vous à votre clé 4G en wifi avec un ordinateur ou un smartphone (le nom de la clé (son SSID) et son mot de passe d'usine (souvent : "1234567890" sont indiqués sur le dos de la clé 4G). 
 Vous devriez avoir accès à internet, faite une recherche sur Google pour vérifier que c'est bien le cas. Si tout fonctionne vous pouvez passer à la partie 2. Il est possible que malgré une carte SIM fonctionnelle la connection à internet ne se fasse pas. Cela est du à un problème d'APN mal configuré sur la clé 4G.
 Pour modifier les paramètres d'APN vous devrez :
-=======
+
 **3. Réaliser le montage électronique**
 
 # 1. Programmer l'Agrocam 
@@ -107,7 +107,6 @@ Pour l'instant vous ne pouvez accéder à votre raspberry qu'en vous connectant 
 - Attention lorsque le raspberry a réussi à se connecter à un autre wifi, votre terminal putty ne communique plus avec le raspberry car votre PC et le raspberry ne sont plus sur le même réseau. 
   
 # 3 Ajouter les fichiers sur le raspberry pi
-=======
 ### 1.6.2 Installer WiringPi
 ```
 git clone https://github.com/WiringPi/WiringPi.git
@@ -168,7 +167,6 @@ Brancher l'alimentation électrique directement sur la carte Witty Pi 4 (l'alime
 <img src="https://user-images.githubusercontent.com/93132152/197518071-94065c91-ed4a-4cee-8cfb-99ead7fd86a6.jpg" width=30% height=30%>
 
 Se connecter au Raspberry comme dans la partie 2.4, ouvrir le terminal de commande et démarrer WittyPi avec la commande suivante :
-=======
 Depuis WinSCP, glisser déposer .env dans ```/home/pi``` une fois modifié avec les informations pertinentes entre les "" (hostname,user,password). Ce fichier contient les informations d'authentification pour accéder au serveur FTP sur lequel les photos seront sauvegardées. Attention le fichier peut être caché
 
 Le fichier peut aussi être crée depuis le terminal :
@@ -335,7 +333,7 @@ Ci-dessous la position du cavalier pour que le script n'éteigne pas l'Agrocam �
 ## 2.4 Tester l'Agrocam
 Une fois ces étapes terminées. Eteindre l'Agrocam ```sudo shutdown -h now ``` puis repositionner le cavalier en position initiale.
 Vous pouvez débrancher l'alimentation et connecter les cellules Li-ion comme sur la photo ci-dessous. Cette [vidéo](https://www.youtube.com/watch?v=nqwYTafg8Z0) vous explique comment réaliser la connectique mâle du XH2.54 sur les fils du boitier d'alimentation.
-=======
+
 
 - Modifier 3600 par une autre valeur. La boucle permet de mettre l'Arduino en sommeil pour 8 secondes, la durée totale sera donc un multiple de 8 secondes.
 - Téléverser une fois le script modifié
@@ -359,7 +357,7 @@ Pour brancher les câbles d'alimentation sur la breadboard il faut sertir des co
 Le câblage final ressemble à ceci : 
 
 Enfin pour tester le cadrage vous pouvez appuyer à n'importe quel moment sur le bouton poussoir de la Witty Pi 4 pour faire une photo. La caméra démarrera automatiquement à l'heure prédéfinie.
-=======
+
 <img src="https://user-images.githubusercontent.com/93132152/177128194-5962b5a6-2418-4f7a-bc7e-1afe850e5d92.jpg" width=50% height=50%>
 
 La partie fonctionnelle de l'Agrocam est terminée. Il reste à faire le montage dont le tutoriel se situe [ici](https://github.com/Mobilab-AgroTIC/Agrocam/blob/main/3D%20files/README.md)
