@@ -1,1 +1,1 @@
-Tous les fichiers pur assembler une Agrocam sont disponibles ici
+Tous les fichiers pour assembler une Agrocam sont disponibles ici
