@@ -6,10 +6,10 @@ from picamera2 import Picamera2, Preview
 from time import sleep
 from ftplib import FTP
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import subprocess
 import credentials as credentials
-
+import sys
 
 # Numéro de la broche GPIO à utiliser pour le servo moteur
 pwm_gpio = 18
@@ -57,33 +57,82 @@ def prendre_photo(date):
     camera.stop_preview()
     camera.close()
 
-def envoyer_http(date):
-    url = 'https://webhook.site/be28a5cf-36e9-4a30-bf66-fdeff104e54d'
-    image_path = '/home/pi/Agrocam/photo'+date+'.png'
+def envoyer_http(date_for_filename_part):
+    # URL of the API endpoint
+    url = f'https://agrocam.agrotic-dev.org/api/upload'
 
+    now = datetime.now()
+
+    # ISO 8601 format for reliable API date parsing
+    now_utc = datetime.now(timezone.utc)
+    date_for_api = now_utc.isoformat(timespec='seconds')
+
+    # --- Get Voltage from Wittypi script ---
+    voltage = None
+    formatted_voltage_for_filename = "unknown_voltage"
+    try:
+        command = subprocess.run(
+            ['bash', '-c', 'source /home/pi/wittypi/utilities.sh && get_input_voltage'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        voltage_str = command.stdout.strip()
+        voltage = float(voltage_str)
+        # Format voltage for filename (replace '.' with '_')
+        formatted_voltage_for_filename = voltage_str.replace('.', '_')
+        print(f"Successfully obtained voltage: {voltage} V")
+
+    except FileNotFoundError:
+        print(f"Error: 'bash' command not found. {sys.exc_info()[0]}", file=sys.stderr)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running get_input_voltage script: {e}", file=sys.stderr)
+        print(f"Stderr:\n{e.stderr}", file=sys.stderr)
+    except ValueError:
+        print(f"Error converting voltage reading '{voltage_str}' to float. Received unexpected output.", file=sys.stderr)
+    except Exception as e:
+         print(f"An unexpected error occurred while getting voltage: {e}", file=sys.stderr)
+    # ---------------------------------------
+
+    # Construct the full path for the photo file to read
+    image_path = f'/home/pi/Agrocam/photo{date_for_filename_part}.png'
+
+    # Define the key used in metadata and filename
+    metadata_key = credentials.name # Replace with actual key variable if dynamic
+
+    # Construct the desired filename for the upload, including key, date, and voltage
+    upload_filename = f"{metadata_key}_{date_for_filename_part}_{formatted_voltage_for_filename}.png"
+
+    # Populate metadata
     metadata = {
-        'key': 'your_key_value',
-        'power_level': 'battery_percentage',
-        'comment': 'optional_comment',
-        'date_acquisition': ' acquisition_date_string',
-        'date_reception': 'reception_date_string',
-        'longitude': 'longitude_value',
-        'latitude': 'latitude_value',
-        'temperature_device': 'temperature_value'
+        'key': metadata_key,
+        'power_level': voltage, # Use the float voltage (will be None if conversion failed)
+        'date_acquisition': date_for_api,
     }
 
-    with open(image_path, 'rb') as f:
-        files = {'photo': ( 'photo.jpg', f, 'image/jpeg')} # 'photo.jpg' is the filename, f is the file object, 'image/jpeg' is the content type
-        data = metadata # The metadata is sent as form fields
+    try:
+         # Open the image file and prepare for upload
+         with open(image_path, 'rb') as f:
+             # 'files' dictionary format: {'field_name': ('filename_for_server', file_object, 'content_type')}
+             files = {'photo': (upload_filename, f, 'image/png')}
+             data = metadata # Metadata is sent as form fields
 
-        response = requests.post(url, files=files, data=data)
+             print(f"Sending data via HTTP POST...")
 
-    if response.status_code == 200:
-        print("Photo and metadata sent successfully!")
-    else:
-        print(f"Error sending data: {response.status_code}")
-        print(response.text)
+             response = requests.post(url, files=files, data=data)
 
+         if response.status_code == 200:
+             print("Photo and metadata sent successfully! Status:", response.status_code)
+         else:
+             print(f"Error sending data. Status code: {response.status_code}", file=sys.stderr)
+             print("Response body:", response.text, file=sys.stderr)
+
+    except FileNotFoundError:
+         print(f"Error: Image file not found at {image_path}.", file=sys.stderr)
+    except requests.exceptions.RequestException as e:
+        print(f"HTTP request failed: {e}", file=sys.stderr)
+    except Exception as e:
+         print(f"An unexpected error occurred during HTTP request or file handling: {e}", file=sys.stderr)
 
 def envoyer_sur_ftp(date):
     ftp = FTP(credentials.ftp_server)
@@ -148,7 +197,7 @@ def setup_wittypi():
 
 def main():
     setup_wittypi()
-    sleep(30) # waiting for wifi
+    #sleep(30) # waiting for wifi
     initialize_GPIO()
     pwm = GPIO.PWM(pwm_gpio,frequence)
     pwm.start(0)
@@ -165,8 +214,8 @@ def main():
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
-        #envoyer_http(current_date)
-        envoyer_sur_ftp(current_date)
+        envoyer_http(current_date)
+        #envoyer_sur_ftp(current_date)
         print("Envoi sur FTP terminé")
         sleep(1)  # Attendre avant de répéter le traitement
 
@@ -185,7 +234,7 @@ def main():
             print("ControlPin is not LOW. i = ", i)
             i += 1
         GPIO.cleanup()
-        subprocess.run(['sudo', 'shutdown', '-h', 'now'])
+        #subprocess.run(['sudo', 'shutdown', '-h', 'now'])
 
 if __name__ == "__main__":
     main()
