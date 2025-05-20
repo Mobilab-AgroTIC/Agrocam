@@ -214,8 +214,8 @@ def main():
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
-        envoyer_http(current_date)
-        #envoyer_sur_ftp(current_date)
+        #envoyer_http(current_date)
+        envoyer_sur_ftp(current_date)
         print("Envoi sur FTP terminé")
         sleep(1)  # Attendre avant de répéter le traitement
 
