@@ -234,7 +234,7 @@ def main():
             print("ControlPin is not LOW. i = ", i)
             i += 1
         GPIO.cleanup()
-        #subprocess.run(['sudo', 'shutdown', '-h', 'now'])
+        subprocess.run(['sudo', 'shutdown', '-h', 'now'])
 
 if __name__ == "__main__":
     main()
