@@ -3,13 +3,15 @@ import RPi.GPIO as GPIO
 from gpiozero import Servo
 from picamera2 import Picamera2, Preview
 # from libcamera import Transform
+import time
 from time import sleep
 from ftplib import FTP
 import requests
 from datetime import datetime, timedelta, timezone
 import subprocess
 import credentials as credentials
-import sys
+import os
+
 
 # Numéro de la broche GPIO à utiliser pour le servo moteur
 pwm_gpio = 18
@@ -17,22 +19,32 @@ pwm_gpio = 18
 # Numéro de la broche de debogage
 controlPin = 24
 
-# Configuration de la caméra
-camera = Picamera2()
 
-# Configuration for rotating picture
-# Ci-dessous d'anciennes config qui ne minimise la taille des images (<500 ko)
-# camera_config = camera.create_still_configuration(main={"size": (1920, 1080)}, lores={"size": (640, 480)}, display="main",transform=Transform(180))
-camera_config = camera.create_still_configuration(main={"size": (4608, 2592)}, lores={"size": (640, 480)}, display="main")
-# La config ci-dessous maximise la taille et donc la qualité de l'image
-camera.configure(camera_config)
-
-camera.set_controls({"AfMode": 2}) #Autofocus  
-#camera.set_controls({"LensPosition": 2.0})
-# Configuration du servo
-frequence = 50
+def initialize_camera(timeout=10):
+    print("Initialisation de la caméra...")
+    start_time = time.time()
+    
+    while True:
+        try:
+            cam = Picamera2()
+            camera_config = cam.create_still_configuration(
+                main={"size": (4608, 2592)},
+                lores={"size": (640, 480)},
+                display="main"
+            )
+            cam.configure(camera_config)
+            cam.set_controls({"AfMode": 2})
+            print("Caméra initialisée.")
+            return cam
+        except Exception as e:
+            if time.time() - start_time > timeout:
+                print(f"Timeout ({timeout}s) : impossible d'initialiser la caméra.")
+                return None
+            print("Erreur initialisation caméra, nouvelle tentative...")
+            time.sleep(1)
 
 def initialize_GPIO() :
+    print("Initialisation des GPIO...")
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(pwm_gpio, GPIO.OUT)
     GPIO.setup(controlPin, GPIO.IN)
@@ -48,76 +60,38 @@ def angle_to_percent (angle) :
 
     return start + angle_as_percent
 
-def prendre_photo(date):
+def prendre_photo(camera,date):
     camera.start_preview()
     camera.start() 
-     
     sleep(1)
-    camera.capture_file('/home/pi/Agrocam/photo'+date+'.png')
+    filepath = f'/home/pi/Agrocam/photo{date}_pending.png'
+    camera.capture_file(filepath)
     camera.stop_preview()
     camera.close()
+    return filepath  # On retourne le chemin pour savoir où est la photo
 
-def envoyer_http(date_for_filename_part):
-    # URL of the API endpoint
-    url = f'https://agrocam.agrotic-dev.org/api/upload'
-
-    now = datetime.now()
-
-    # ISO 8601 format for reliable API date parsing
-    now_utc = datetime.now(timezone.utc)
-    date_for_api = now_utc.isoformat(timespec='seconds')
-
-    # --- Get Voltage from Wittypi script ---
-    voltage = None
-    formatted_voltage_for_filename = "unknown_voltage"
-    try:
-        command = subprocess.run(
-            ['bash', '-c', 'source /home/pi/wittypi/utilities.sh && get_input_voltage'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        voltage_str = command.stdout.strip()
-        voltage = float(voltage_str)
-        # Format voltage for filename (replace '.' with '_')
-        formatted_voltage_for_filename = voltage_str.replace('.', '_')
-        print(f"Successfully obtained voltage: {voltage} V")
-
-    except FileNotFoundError:
-        print(f"Error: 'bash' command not found. {sys.exc_info()[0]}", file=sys.stderr)
-    except subprocess.CalledProcessError as e:
-        print(f"Error running get_input_voltage script: {e}", file=sys.stderr)
-        print(f"Stderr:\n{e.stderr}", file=sys.stderr)
-    except ValueError:
-        print(f"Error converting voltage reading '{voltage_str}' to float. Received unexpected output.", file=sys.stderr)
-    except Exception as e:
-         print(f"An unexpected error occurred while getting voltage: {e}", file=sys.stderr)
-    # ---------------------------------------
-
-    # Construct the full path for the photo file to read
-    image_path = f'/home/pi/Agrocam/photo{date_for_filename_part}.png'
-
-    # Define the key used in metadata and filename
-    metadata_key = credentials.name # Replace with actual key variable if dynamic
-
-    # Construct the desired filename for the upload, including key, date, and voltage
-    upload_filename = f"{metadata_key}_{date_for_filename_part}_{formatted_voltage_for_filename}.png"
-
-    # Populate metadata
+def envoyer_http(image_path):
+    print("Envoi de la photo et des métadonnées via HTTP...")
+    url = 'https://agrocam.agrotic.org/api/upload'
+    # Préparez les métadonnées à envoyer
     metadata = {
-        'key': metadata_key,
-        'power_level': voltage, # Use the float voltage (will be None if conversion failed)
-        'date_acquisition': date_for_api,
+        'key': 'your_key_value',
+        'power_level': 'battery_percentage',
+        'comment': 'optional_comment',
+        'date_acquisition': ' acquisition_date_string',
+        'date_reception': 'reception_date_string',
+        'longitude': 'longitude_value',
+        'latitude': 'latitude_value',
+        'temperature_device': 'temperature_value'
     }
-
-    try:
-         # Open the image file and prepare for upload
-         with open(image_path, 'rb') as f:
-             # 'files' dictionary format: {'field_name': ('filename_for_server', file_object, 'content_type')}
-             files = {'photo': (upload_filename, f, 'image/png')}
-             data = metadata # Metadata is sent as form fields
-
-             print(f"Sending data via HTTP POST...")
+    # Ouvrez le fichier image et envoyez-le avec les métadonnées
+    print(f"Envoi de l'image : {image_path}")
+    if not os.path.exists(image_path):
+        print(f"Erreur : le fichier {image_path} n'existe pas.")
+        return
+    with open(image_path, 'rb') as f:
+        files = {'photo': ( 'photo.jpg', f, 'image/jpeg')} # 'photo.jpg' is the filename, f is the file object, 'image/jpeg' is the content type
+        data = metadata # The metadata is sent as form fields
 
              response = requests.post(url, files=files, data=data)
 
@@ -126,13 +100,6 @@ def envoyer_http(date_for_filename_part):
          else:
              print(f"Error sending data. Status code: {response.status_code}", file=sys.stderr)
              print("Response body:", response.text, file=sys.stderr)
-
-    except FileNotFoundError:
-         print(f"Error: Image file not found at {image_path}.", file=sys.stderr)
-    except requests.exceptions.RequestException as e:
-        print(f"HTTP request failed: {e}", file=sys.stderr)
-    except Exception as e:
-         print(f"An unexpected error occurred during HTTP request or file handling: {e}", file=sys.stderr)
 
 def envoyer_sur_ftp(date):
     ftp = FTP(credentials.ftp_server)
@@ -147,6 +114,7 @@ def envoyer_sur_ftp(date):
     subprocess.run(['bash', '-c', cmd],capture_output=True,text=True)
 
 def set_startup_time(date, hour, minute, second):
+    print("Configuration de l'heure de démarrage...")
     command_set_startup = f"sudo bash -c 'source /home/pi/wittypi/utilities.sh && set_startup_time {date} {hour} {minute} {second}'"    
     command_net_to_system = subprocess.run(['bash', '-c', 'source /home/pi/wittypi/utilities.sh && net_to_system'],capture_output=True,text=True)
     command_system_to_rtc = subprocess.run(['bash', '-c', 'source /home/pi/wittypi/utilities.sh && system_to_rtc'],capture_output=True,text=True)
@@ -194,30 +162,89 @@ def setup_wittypi():
     subprocess.run(cmd_recovery_voltage, shell=True, capture_output=True, text=True)
     subprocess.run(cmd_threshold_voltage, shell=True, capture_output=True, text=True)
 
+def is_connected():
+    try:
+        subprocess.check_output(
+            ["ping", "-c", "1", "-W", "1", "8.8.8.8"],
+            stderr=subprocess.DEVNULL
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def wait_for_wifi(timeout=60):
+    print("Attente de connexion Wi-Fi...")
+    start_time = time.time()
+    while True:
+        if is_connected():
+            print("Wi-Fi connecté.")
+            return True
+        if time.time() - start_time > timeout:
+            print(f"Pas de connexion après {timeout} secondes.")
+            return False
+        time.sleep(1)
+
+def get_pending_files(folder):
+    files = os.listdir(folder)
+    return [os.path.join(folder, f) for f in files if f.endswith("_pending.png")]
+
+def resend_pending_photos():
+    """Renvoie toutes les photos non envoyées (_pending) si le Wi-Fi est disponible"""
+    if not is_connected():
+        print("Pas de Wi-Fi, impossible de renvoyer les anciennes photos.")
+        return
+    
+    pending_files=get_pending_files("/home/pi/Agrocam")
+    if not pending_files:
+        print("Aucune photo en attente à renvoyer.")
+        return
+    
+    print(f" {len(pending_files)} photo(s) en attente à renvoyer...")
+    for filepath in pending_files:
+        filename = os.path.basename(filepath)
+        date_part = filename.split("_pending.png")[0].replace("photo", "")
+        try:
+            envoyer_sur_ftp(date_part)  # réutilise ta fonction d'envoi
+            new_path = filepath.replace("_pending.png", "_sent.png")
+            os.rename(filepath, new_path)
+            print(f"Photo renvoyée et renommée : {new_path}")
+            return True
+        except Exception as e:
+            print(f"Échec renvoi {filename} : {e}")
 
 def main():
     setup_wittypi()
     #sleep(30) # waiting for wifi
+    camera = initialize_camera(timeout=10)
+    if camera is None:
+        print("Caméra non disponible, on saute la prise de photo et l'envoi FTP.")
+        return  # Sort directement du main → passe dans le finally
     initialize_GPIO()
-    pwm = GPIO.PWM(pwm_gpio,frequence)
+    pwm = GPIO.PWM(pwm_gpio,50) #50 Hz
     pwm.start(0)
     now = datetime.now()
     current_date = now.strftime("%Y-%m-%d_%H%M%S")
     try:
+        print("Démarrage du script Agrocam...")
         pwm.ChangeDutyCycle(angle_to_percent(0))
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
-        prendre_photo(current_date)
+        filepath = prendre_photo(camera,current_date)
         print("photo prise")
         pwm.ChangeDutyCycle(angle_to_percent(90))
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
-        envoyer_http(current_date)
-        #envoyer_sur_ftp(current_date)
-        print("Envoi sur FTP terminé")
-        sleep(1)  # Attendre avant de répéter le traitement
+        print("Envoi de la photo et des métadonnées via HTTP...")
+        wifi_ok = wait_for_wifi(timeout=60)
+        
+        if wifi_ok:
+            envoyer_http(filepath)
+            resend_pending_photos()
+            print("Envoi sur FTP terminé")
+        else:
+            print("Envoi FTP annulé (pas de Wi-Fi)")
 
     except KeyboardInterrupt:
         pass
