@@ -213,6 +213,29 @@ def get_voltage():
     except ValueError:
         print(f"Erreur de conversion de la lecture de tension '{voltage_str}' en float. Sortie inattendue.", file=sys.stderr)   
 
+def connect_wifi(ssid, password):
+    # Vérifie si la connexion existe déjà
+    result = subprocess.run(
+        ["nmcli", "-t", "-f", "NAME", "connection", "show"],
+        capture_output=True, text=True
+    )
+    connections = result.stdout.splitlines()
+    
+    if ssid in connections:
+        print(f"Connexion {ssid} déjà configurée, pas de nouvelle tentative.")
+        return
+    
+    # Sinon, on se connecte
+    try:
+        subprocess.run(
+            ["nmcli", "device", "wifi", "connect", ssid, "password", password],
+            check=True
+        )
+        print(f"Tentative de connexion à {ssid}...")
+    except subprocess.CalledProcessError:
+        print(f"Impossible de se connecter à {ssid}")
+
+
 def is_connected():
     try:
         subprocess.check_output(
@@ -230,9 +253,12 @@ def wait_for_wifi(timeout=60):
         if is_connected():
             print("Wi-Fi connecté.")
             return True
+        else :
+            connect_wifi(credentials.wifi_ssid, credentials.wifi_password)
         if time.time() - start_time > timeout:
             print(f"Pas de connexion après {timeout} secondes.")
             return False
+             
         time.sleep(1)
 
 def get_pending_files(folder):
