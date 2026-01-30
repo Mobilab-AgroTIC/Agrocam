@@ -4,7 +4,7 @@ After=multi-user.target
 
 [Service]
 Type=idle
-ExecStart=/usr/bin/python3 /home/pi/agrocam.py > /home/pi/myscript.log 2>&1
+ExecStart=/usr/bin/python3 /home/pi/agrocam.py
 WorkingDirectory=/home/pi
 User=pi
 ExecStartPre=/bin/sleep 10

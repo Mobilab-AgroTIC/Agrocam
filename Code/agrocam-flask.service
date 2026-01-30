@@ -1,0 +1,13 @@
+
+[Unit]
+Description=Agrocam Flask Interface
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/python3 /home/pi/credentials_web.py
+WorkingDirectory=/home/pi
+User=pi
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
