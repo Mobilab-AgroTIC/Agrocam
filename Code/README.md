@@ -123,6 +123,7 @@ dtoverlay=disable-bt
 \# Désactive l'HDMI (gain de conso et de temps)
 hdmi_blanking=2
 
+
 ```sudo nano /etc/dhcpcd.conf```
 interface wlan0
 static ip_address=192.168.1.100/24
