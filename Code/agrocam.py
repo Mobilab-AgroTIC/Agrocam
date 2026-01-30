@@ -9,11 +9,20 @@ import subprocess
 import os
 import sys
 import json
+import piexif
+from PIL import Image
+import mimetypes
 
 CREDENTIALS_FILE = "credentials.json"
 
 with open(CREDENTIALS_FILE, "r") as f:
     credentials = json.load(f)
+
+
+IMMICH_SERVER = credentials["immich"]["url"]  # ex: "https://immich.example.com"
+API_KEY = credentials["immich"]["api_key"]              # Bearer token
+ALBUM_ID = credentials["immich"]["album_id"]            # Album cible
+TIMEOUT = credentials["general"]["sending_timeout"]                                      # (connexion, lecture)
 
 # Numéro de la broche GPIO à utiliser pour le servo moteur
 pwm_gpio = 18
@@ -39,8 +48,8 @@ def angle_to_percent (angle) :
     return start + angle_as_percent
 
 def prendre_photo(voltage):
-    now_utc = datetime.now(timezone.utc)
-    timestamp_str = now_utc.strftime("%Y-%m-%dT%H-%M-%S")
+    
+    timestamp_str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending{credentials["photo"]["extension"]}'
     
     # 1. La base de la commande
@@ -67,170 +76,174 @@ def prendre_photo(voltage):
     # Exécution
     print(cmd)
     subprocess.run(cmd)
+        # 3. Ajout de la localisation dans les EXIF
+    try:
+        exif_dict = {"0th": {}, "Exif": {}, "GPS": {}}
+
+        # --- DATE ---
+        exif_dict["0th"][ImageIFD.DateTime] = timestamp_str.encode('ascii')
+        exif_dict["Exif"][ExifIFD.DateTimeOriginal] = timestamp_str.encode('ascii')
+        exif_dict["Exif"][ExifIFD.DateTimeDigitized] = timestamp_str.encode('ascii')
+
+        # --- VOLTAGE ---
+        user_comment = f"BatteryVoltage={voltage:.2f}V"
+        exif_dict["Exif"][piexif.ExifIFD.UserComment] = (
+            b"ASCII\x00\x00\x00" + user_comment.encode("ascii")
+        )
+
+        # --- GPS ---
+        latitude = credentials["photo"]["location"]["latitude"]
+        longitude = credentials["photo"]["location"]["longitude"]
+
+        if latitude is not None and longitude is not None:
+
+            def to_deg(value):
+                deg = int(abs(value))
+                min_float = (abs(value) - deg) * 60
+                min_int = int(min_float)
+                sec = int((min_float - min_int) * 60 * 100)
+                return ((deg,1),(min_int,1),(sec,100))
+
+            lat_ref = "N" if latitude >= 0 else "S"
+            lon_ref = "E" if longitude >= 0 else "W"
+
+            exif_dict["GPS"] = {
+                piexif.GPSIFD.GPSLatitudeRef: lat_ref.encode(),
+                piexif.GPSIFD.GPSLatitude: to_deg(latitude),
+                piexif.GPSIFD.GPSLongitudeRef: lon_ref.encode(),
+                piexif.GPSIFD.GPSLongitude: to_deg(longitude),
+            }
+
+        exif_bytes = piexif.dump(exif_dict)
+        im = Image.open(filepath)
+        im.save(filepath, "jpeg", exif=exif_bytes)
+
+        print(f"[INFO] EXIF ajoutés : GPS + BatteryVoltage={voltage:.2f}V")
+
+    except Exception as e:
+        print(f"[ERROR] Impossible d'ajouter les EXIF : {e}")
+
     return filepath
 
-
-def prendre_photo_legacy (camera,voltage):
-    camera.start_preview()
-    camera.start() 
-    sleep(1)
-    now_utc=datetime.now(timezone.utc)  # date acquisition en UTC, objet datetime
-    # Format sans ':' pour nom fichier
-    timestamp_str = now_utc.strftime("%Y-%m-%dT%H-%M-%S")
-    os.makedirs(os.path.dirname("/home/pi/Agrocam"), exist_ok=True)
-    filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending.png'
-    camera.capture_file(filepath)
-    camera.stop_preview()
-    camera.close()
-    return filepath  # On retourne le chemin pour savoir où est la photo
-
-def envoyer_http(filepath, voltage=None):
-    url = credentials["general"]["url_api"]
-    filename = os.path.basename(filepath)
+def envoyer_http(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None):
+    """
+    Envoie une photo vers un serveur Immich via l'API.
     
-    # 1. Séparer le nom de l'extension (ex: .png ou .jpg)
-    name_part, extension = os.path.splitext(filename)
+    :param file_path: Chemin local de l'image (ex: '/home/pi/photo.jpg')
+    :param server_url: URL de votre instance (ex: 'http://192.168.1.50:2283')
+    :param api_key: Votre clé API Immich
+    """
     
-    # 2. Découper le nom par les underscores
-    # Format attendu : "2025-08-12T14-30-00_4.79_pending"
-    parts = name_part.split('_')
-    
-    # La date est toujours le premier élément avant le premier "_"
-    date_acquisition_raw = parts[0] 
-    
-    # 3. Conversion de la date
-    try:
-        date_acquisition_dt = datetime.strptime(date_acquisition_raw, "%Y-%m-%dT%H-%M-%S")
-        date_acquisition_iso = date_acquisition_dt.isoformat(timespec='seconds')
-    except ValueError as e:
-        print(f"Erreur format date dans le nom de fichier : {e}")
-        return # On arrête si la date est illisible
+    # On nettoie l'URL pour s'assurer qu'elle finit par /api
+    base_url = f"{server_url}/api/assets"
 
-    # 4. Dates d'envoi et métadonnées
-    date_envoi = datetime.now(timezone.utc)
-    date_envoi_str = date_envoi.strftime("%Y-%m-%dT%H:%M:%S")
-    metadata_key = credentials["general"]["name"]
-
-    # 5. Préparation du fichier pour l'envoi
-    # On garde l'extension d'origine pour le serveur
-    upload_filename = f"{metadata_key}_{date_acquisition_iso}_{date_envoi_str}_{voltage}{extension}"
+    # Récupération des métadonnées du fichier pour l'ID unique
+    stats = os.stat(file_path)
+    file_name = os.path.basename(file_path)
     
-    # Déterminer le type MIME dynamiquement
-    mime_type = "image/jpeg" if extension.lower() in [".jpg", ".jpeg"] else "image/png"
-
-    metadata = {
-        'key': metadata_key,
-        'power_level': voltage,
-        'date_acquisition': date_acquisition_iso,
+    headers = {
+        'Accept': 'application/json',
+        'x-api-key': api_key
+    }
+    
+    # Données requises par Immich pour l'upload
+    # deviceAssetId doit être unique pour éviter les doublons
+    data = {
+        'deviceAssetId': f'{file_name}-{stats.st_mtime}',
+        'deviceId': 'raspberry-pi',
+        'fileCreatedAt': datetime.fromtimestamp(stats.st_mtime).isoformat(),
+        'fileModifiedAt': datetime.fromtimestamp(stats.st_mtime).isoformat(),
+        'isFavorite': 'false'
     }
 
+    print("données envoyées avec la photo : ",data)
+    mime_type, _ = mimetypes.guess_type(file_path)
+    mime_type = mime_type or 'application/octet-stream'
+
     try:
-        with open(filepath, 'rb') as f:
-            files = {'photo': (upload_filename, f, mime_type)}
-            print(f"Envoi de {filename} ({mime_type})...")
-            
-            response = requests.post(
-                url, 
-                files=files, 
-                data=metadata, 
-                timeout=credentials["general"].get("sending_timeout", 30)
-            )
-            print("Headers réponse :", response.headers)
-            response.raise_for_status()
-            
-        if response.status_code in [200, 201]:
-            print("Photo envoyée avec succès !")
-            # On remplace "_pending" par "_sent" tout en gardant la bonne extension
-            new_path = filepath.replace("_pending", "_sent")
-            os.rename(filepath, new_path)
+        # --- ÉTAPE 1 : TÉLÉVERSEMENT ---
+        with open(file_path, 'rb') as f:
+            files = {'assetData': (file_name, f, mime_type)}
+            response = requests.post(base_url, headers=headers, data=data, files=files)
         
-    except requests.exceptions.RequestException as e:
-        print(f"Échec de la requête HTTP : {e}", file=sys.stderr)
-    except requests.exceptions.HTTPError as e:
-        response = e.response
-        print("❌ Erreur HTTP", file=sys.stderr)
-        print(f"Status code : {response.status_code}", file=sys.stderr)
-        print("Headers réponse :", file=sys.stderr)
-        print(response.headers, file=sys.stderr)
-        print("Corps de la réponse :", file=sys.stderr)
-        print(response.text, file=sys.stderr)
+        if response.status_code not in [200, 201]:
+            print(f"❌ Erreur Upload {response.status_code} : {response.text}")
+            return None
 
-def envoyer_http_legacy(filepath,voltage=None):
-    # URL of the API endpoint
-    #url = f'https://agrocam.agrotic-dev.org/api/upload'
-    url=credentials["general"]["url_api"]
+        asset_info = response.json()
+        asset_id = asset_info.get('id')
+        print(f"✅ Photo envoyée (ID: {asset_id})")
+        new_path = file_path.replace("_pending.png", "_sent.png")
+        os.rename(file_path, new_path)
 
-    ## Récupération de la date d'acquisition depuis le nom du fichier
-    # On suppose que le nom du fichier est au format "2025-08-12T14-30-00.png"
-    # On enlève l'extension pour obtenir "2025-08-12T14-30-00"
-    # On utilise datetime.strptime pour convertir en objet datetime
-    filename = os.path.basename(filepath)
-    # Le nom est "2025-08-12T14-30-00_4.79_pending.png", on récupère la date
-    # On enlève la partie "_pending.png" pour obtenir juste la date
-    filename_without_extension = filename.replace("_pending.png", "")
-    # On enlève la partie "_4.79" pour obtenir juste la date
-    if "_" in filename_without_extension:
-        filename_without_extension = filename_without_extension.split("_")[0]
-    # Recréer datetime UTC depuis le nom de fichier
-    date_acquisition_str = datetime.strptime(filename_without_extension, "%Y-%m-%dT%H-%M-%S")
-    # Convertir en date ISO pour l'API
-    date_acquisition_iso = date_acquisition_str.isoformat(timespec='seconds')
+        # --- ÉTAPE 2 : MISE À JOUR DE LA DESCRIPTION (Le voltage) ---
+        if asset_id:
+            if voltage is not None:
+                desc = f"Niveau batterie: {float(voltage):.2f}V"
+            else:
+                desc = "Niveau batterie: inconnu"
+            # L'URL pour modifier un asset est /api/assets/{id}
+            update_url = f"{server_url.rstrip('/')}/api/assets/{asset_id}"
+            update_payload = {
+                'description': desc
+            }
+            # On utilise PUT pour mettre à jour les informations
+            res_upd = requests.put(update_url, headers=headers, json=update_payload)
+            if res_upd.status_code == 200:
+                print(f"📝 Description mise à jour V")
+            else:
+                print(f"⚠️ Erreur Description : {res_upd.text}")
 
-    ## Récupération de la date d'envoi
-    # On utilise datetime.now() pour obtenir la date actuelle en UTC
-    # et on la formate en chaîne ISO 8601
-    date_envoi = datetime.now(timezone.utc)
-    date_envoi_str = date_envoi.strftime("%Y-%m-%dT%H:%M:%S")
+        # --- ÉTAPE 2 : AJOUT À L'ALBUM ---
+        if asset_id and album_id:
+            album_url = f"{server_url.rstrip('/')}/api/albums/{album_id}/assets"
+            album_data = {
+                'ids': [asset_id]
+            }
+            
+            album_res = requests.put(album_url, headers=headers, json=album_data)
+            
+            if album_res.status_code in [200, 201]:
+                print(f"📂 Photo ajoutée à l'album {album_id}")
+            else:
+                print(f"⚠️ Erreur Album {album_res.status_code} : {album_res.text}")
+        
+        return asset_info
 
-
-    # On formate la tension pour le nom de fichier
-    print(f"Successfully obtained voltage: {voltage} V")
-    
-    # Define the key used in metadata and filename
-    metadata_key = credentials["general"]["name"] # Replace with actual key variable if dynamic
-
-    # Construct the desired filename for the upload, including key, date, and voltage
-    upload_filename = f"{metadata_key}_{date_acquisition_iso}_{date_envoi_str}_{voltage}_{credentials["general"]["extension"]}"
-
-    # Populate metadata
-    metadata = {
-        'key': metadata_key,
-        'power_level': voltage, # Use the float voltage (will be None if conversion failed)
-        'date_acquisition': date_acquisition_iso,
-    }
-
-    try:
-         # Open the image file and prepare for upload
-         with open(filepath, 'rb') as f:
-             # 'files' dictionary format: {'field_name': ('filename_for_server', file_object, 'content_type')}
-             files = {'photo': (upload_filename, f, 'image/png')}
-             data = metadata # Metadata is sent as form fields
-
-             print(f"Sending data via HTTP POST...")
-             # Ajout du timeout ici (en secondes)
-             response = requests.post(url, files=files, data=data, timeout=credentials["general"]["sending_timeout"])
-             
-             # Vérifie si le serveur a répondu avec une erreur (4xx ou 5xx)
-             response.raise_for_status()
-
-             #response = requests.post(url, files=files, data=data)
-
-         if response.status_code in [200, 201]:
-             print("Photo and metadata sent successfully! Status:", response.status_code)
-             new_path = filepath.replace("_pending", "_sent")
-             os.rename(filepath, new_path)
-         else:
-             print(f"Error sending data. Status code: {response.status_code}", file=sys.stderr)
-             print("Response body:", response.text, file=sys.stderr)
-
-    except FileNotFoundError:
-         print(f"Error: Image file not found at {filepath}.", file=sys.stderr)
-    except requests.exceptions.RequestException as e:
-        print(f"HTTP request failed: {e}", file=sys.stderr)
     except Exception as e:
-         print(f"An unexpected error occurred during HTTP request or file handling: {e}", file=sys.stderr)
+        print(f"⚠️ Erreur : {e}")
+        return None
 
+def get_pending_files(folder):
+    files = os.listdir(folder)
+    return [os.path.join(folder, f) for f in files if "pending" in f]
 
+def resend_pending_photos(voltage):
+    """Renvoie toutes les photos non envoyées (_pending) si le Wi-Fi est disponible"""
+    if not is_connected():
+        print("Pas de Wi-Fi, impossible de renvoyer les anciennes photos.")
+        return
+    
+    if voltage is not None:
+        if voltage > 8 or voltage < 5:
+            pending_files=get_pending_files("/home/pi/Agrocam")
+            if not pending_files:
+                print("Aucune photo en attente à renvoyer.")
+                return
+            
+            print(f" {len(pending_files)} photo(s) en attente à renvoyer...")
+            for filepath in pending_files:
+                filename = os.path.basename(filepath)
+                try:
+                    envoyer_http(filepath)
+                except Exception as e:
+                    print(f"Échec renvoi {filename} : {e}")
+        else :
+            print("Voltage de : ", voltage, " V insufisant pour envoyer les photos en attentes")
+    else:
+        print("Erreur : Impossible de lire le voltage, saut de la vérification.")
+        return False
+    
 def set_startup_time(date, hour, minute, second):
     print("Configuration de l'heure de démarrage...")
     command_set_startup = f"sudo bash -c 'source /home/pi/wittypi/utilities.sh && set_startup_time {date} {hour} {minute} {second}'"    
@@ -371,7 +384,6 @@ def connect_wifi_propposition_chatgpt(target_ssid, password):
         stderr=None
     )
 
-
 def wait_for_wifi(timeout=60):
     target = credentials["wifi"]["ssid"]
     password = credentials["wifi"]["password"]
@@ -407,41 +419,7 @@ def wait_for_wifi(timeout=60):
     else:
         print(f"Échec : Cible {target} non rejointe après {timeout}s.")
         return False
-
-def get_pending_files(folder):
-    files = os.listdir(folder)
-    return [os.path.join(folder, f) for f in files if "pending" in f]
-
-def resend_pending_photos(voltage):
-    """Renvoie toutes les photos non envoyées (_pending) si le Wi-Fi est disponible"""
-    if not is_connected():
-        print("Pas de Wi-Fi, impossible de renvoyer les anciennes photos.")
-        return
     
-    if voltage is not None:
-        if voltage > 8 or voltage < 5:
-            pending_files=get_pending_files("/home/pi/Agrocam")
-            if not pending_files:
-                print("Aucune photo en attente à renvoyer.")
-                return
-            
-            print(f" {len(pending_files)} photo(s) en attente à renvoyer...")
-            for filepath in pending_files:
-                filename = os.path.basename(filepath)
-                # date_part = filename.split("_pending.png")[0]
-                try:
-                    envoyer_http(filepath,voltage)
-                except Exception as e:
-                    print(f"Échec renvoi {filename} : {e}")
-        else :
-            print("Voltage de : ", voltage, " V insufisant pour envoyer les photos en attentes")
-    else:
-        print("Erreur : Impossible de lire le voltage, saut de la vérification.")
-        return False
-    
-    
-
-
 def main():
     try:
         setup_wittypi()
@@ -464,10 +442,14 @@ def main():
         wifi_ok = wait_for_wifi(credentials["wifi"]["timeout"])
         
         # on n'envoie pas la photo tant que l'agrocam n'a pas de name
-        if credentials["general"]["name"]!="":
+        if credentials["immich"]["album_id"]!="":
             if wifi_ok:
                 print("Envoi de la photo et des métadonnées via HTTP...")
-                envoyer_http(filepath,voltage)
+                envoyer_http(filepath,
+                             credentials["immich"]["url"],
+                             credentials["immich"]["api_key"],
+                             credentials["immich"]["album_id"],
+                             voltage)
                 resend_pending_photos(voltage)
             else:
                 print("Envoi annulé (pas de Wi-Fi)")

@@ -41,7 +41,8 @@ Ouvrir Putty
 
 ```
 sudo apt-get update
-sudo apt install python3-flask 
+sudo apt install python3-flask
+sudo apt install python3-piexif
 ```
 
 # 4. Téléverser les scripts depuis Winscp
