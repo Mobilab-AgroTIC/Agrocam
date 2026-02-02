@@ -70,7 +70,8 @@ def prendre_photo(voltage):
     cmd.extend([
         "--width", str(credentials["photo"]["size"]["width"]),
         "--height", str(credentials["photo"]["size"]["height"]),
-        "-q", str(credentials["photo"]["quality"])
+        "-q", str(credentials["photo"]["quality"]),
+        "--awb", "auto"
     ])
 
 
@@ -126,7 +127,7 @@ def prendre_photo(voltage):
 
         exif_bytes = piexif.dump(exif_dict)
         im = Image.open(filepath)
-        im.save(filepath, "jpeg", exif=exif_bytes)
+        im.save(filepath, "png", exif=exif_bytes)
 
         print(f"[INFO] EXIF ajoutés : GPS + BatteryVoltage={voltage:.2f}V")
 
@@ -172,7 +173,7 @@ def envoyer_http_agrocam(filepath, server_url=AGROCAM_SERVER,metadata_key=AGROCA
 
     try:
         with open(filepath, 'rb') as f:
-            files = {'photo': (upload_filename, f, "image/png")}
+            files = {'photo': (upload_filename, f, 'image/png')}
             print(f"Envoi de {filename}")
             
             response = requests.post(
@@ -205,7 +206,7 @@ def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, al
     """
     Envoie une photo vers un serveur Immich via l'API.
     
-    :param file_path: Chemin local de l'image (ex: '/home/pi/photo.jpg')
+    :param file_path: Chemin local de l'image (ex: '/home/pi/photo.png')
     :param server_url: URL de votre instance (ex: 'http://192.168.1.50:2283')
     :param api_key: Votre clé API Immich
     """
