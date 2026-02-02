@@ -11,7 +11,6 @@ import sys
 import json
 import piexif
 from PIL import Image
-import mimetypes
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -19,11 +18,12 @@ with open(CREDENTIALS_FILE, "r") as f:
     credentials = json.load(f)
 
 
-IMMICH_SERVER = credentials["immich"]["url"]  # ex: "https://immich.example.com"
-API_KEY = credentials["immich"]["api_key"]              # Bearer token
-ALBUM_ID = credentials["immich"]["album_id"]            # Album cible
+IMMICH_SERVER = credentials["upload"]["immich"]["url"]  # ex: "https://immich.example.com"
+API_KEY = credentials["upload"]["immich"]["api_key"]              # Bearer token
+ALBUM_ID = credentials["upload"]["immich"]["album_id"]            # Album cible
 TIMEOUT = credentials["general"]["sending_timeout"]                                      # (connexion, lecture)
-
+AGROCAM_SERVER=credentials["upload"]["agrocam"]["url"]
+AGROCAM_NAME=credentials["upload"]["agrocam"]["name"]
 # Numéro de la broche GPIO à utiliser pour le servo moteur
 pwm_gpio = 18
 
@@ -135,6 +135,71 @@ def prendre_photo(voltage):
 
     return filepath
 
+def envoyer_http_agrocam(filepath, server_url=AGROCAM_SERVER,metadata_key=AGROCAM_NAME,voltage=None,timeout=10):
+    filename = os.path.basename(filepath)
+    
+    # 1. Séparer le nom de l'extension (ex: .png ou .jpg)
+    name_part, extension = os.path.splitext(filename)
+    
+    # 2. Découper le nom par les underscores
+    # Format attendu : "2025-08-12T14-30-00_4.79_pending"
+    parts = name_part.split('_')
+    
+    # La date est toujours le premier élément avant le premier "_"
+    date_acquisition_raw = parts[0] 
+    
+    # 3. Conversion de la date
+    try:
+        date_acquisition_dt = datetime.strptime(date_acquisition_raw, "%Y-%m-%dT%H-%M-%S")
+        date_acquisition_iso = date_acquisition_dt.isoformat(timespec='seconds')
+    except ValueError as e:
+        print(f"Erreur format date dans le nom de fichier : {e}")
+        return # On arrête si la date est illisible
+
+    # 4. Dates d'envoi et métadonnées
+    date_envoi = datetime.now(timezone.utc)
+    date_envoi_str = date_envoi.strftime("%Y-%m-%dT%H:%M:%S")
+
+    # 5. Préparation du fichier pour l'envoi
+    upload_filename = f"{metadata_key}_{date_acquisition_iso}_{date_envoi_str}_{voltage}.png"
+    
+
+    metadata = {
+        'key': metadata_key,
+        'power_level': voltage,
+        'date_acquisition': date_acquisition_iso,
+    }
+
+    try:
+        with open(filepath, 'rb') as f:
+            files = {'photo': (upload_filename, f, "image/png")}
+            print(f"Envoi de {filename}")
+            
+            response = requests.post(
+                server_url, 
+                files=files, 
+                data=metadata, 
+                timeout=timeout
+            )
+            print("Headers réponse :", response.headers)
+            response.raise_for_status()
+            
+        if response.status_code in [200, 201]:
+            print("Photo envoyée avec succès !")
+            # On remplace "_pending" par "_sent" tout en gardant la bonne extension
+            new_path = filepath.replace("_pending", "_sent")
+            os.rename(filepath, new_path)
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Échec de la requête HTTP : {e}", file=sys.stderr)
+    except requests.exceptions.HTTPError as e:
+        response = e.response
+        print("❌ Erreur HTTP", file=sys.stderr)
+        print(f"Status code : {response.status_code}", file=sys.stderr)
+        print("Headers réponse :", file=sys.stderr)
+        print(response.headers, file=sys.stderr)
+        print("Corps de la réponse :", file=sys.stderr)
+        print(response.text, file=sys.stderr)
 
 def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None,timeout=10):
     """
@@ -168,13 +233,11 @@ def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, al
     }
 
     print("données envoyées avec la photo : ",data)
-    mime_type, _ = mimetypes.guess_type(file_path)
-    mime_type = mime_type or 'application/octet-stream'
 
     try:
         # --- ÉTAPE 1 : TÉLÉVERSEMENT ---
         with open(file_path, 'rb') as f:
-            files = {'assetData': (file_name, f, mime_type)}
+            files = {'assetData': (file_name, f, "image/png")}
             response = requests.post(base_url, headers=headers, data=data, files=files,timeout=timeout)
         
         if response.status_code not in [200, 201]:
