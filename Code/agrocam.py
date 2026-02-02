@@ -48,8 +48,9 @@ def angle_to_percent (angle) :
     return start + angle_as_percent
 
 def prendre_photo(voltage):
-    
-    timestamp_str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    now=datetime.now()
+    timestamp_str = now.strftime("%Y-%m-%dT%H-%M-%S")
+    timestamp_exif = now.strftime("%Y:%m:%d %H:%M:%S")
     filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending{credentials["photo"]["extension"]}'
     
     # 1. La base de la commande
@@ -81,9 +82,9 @@ def prendre_photo(voltage):
         exif_dict = {"0th": {}, "Exif": {}, "GPS": {}}
 
         # --- DATE ---
-        exif_dict["0th"][ImageIFD.DateTime] = timestamp_str.encode('ascii')
-        exif_dict["Exif"][ExifIFD.DateTimeOriginal] = timestamp_str.encode('ascii')
-        exif_dict["Exif"][ExifIFD.DateTimeDigitized] = timestamp_str.encode('ascii')
+        exif_dict["0th"][piexif.ImageIFD.DateTime] = timestamp_exif.encode('ascii')
+        exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = timestamp_exif.encode('ascii')
+        exif_dict["Exif"][piexif.ExifIFD.DateTimeDigitized] = timestamp_exif.encode('ascii')
 
         # --- VOLTAGE ---
         user_comment = f"BatteryVoltage={voltage:.2f}V"
@@ -96,22 +97,31 @@ def prendre_photo(voltage):
         longitude = credentials["photo"]["location"]["longitude"]
 
         if latitude is not None and longitude is not None:
-
             def to_deg(value):
-                deg = int(abs(value))
-                min_float = (abs(value) - deg) * 60
+                abs_value = abs(value)
+                deg = int(abs_value)
+                min_float = (abs_value - deg) * 60
                 min_int = int(min_float)
-                sec = int((min_float - min_int) * 60 * 100)
-                return ((deg,1),(min_int,1),(sec,100))
+                sec_float = (min_float - min_int) * 60
+                # On utilise 10000 pour plus de précision sur les secondes
+                return ((deg, 1), (min_int, 1), (int(sec_float * 10000), 10000))
 
             lat_ref = "N" if latitude >= 0 else "S"
             lon_ref = "E" if longitude >= 0 else "W"
 
+            # On récupère les tuples (num, den) directement
+            lat_deg = to_deg(latitude)
+            lon_deg = to_deg(longitude)
+
+            print(f"Enregistrement -> Lat: {lat_deg} {lat_ref}, Lon: {lon_deg} {lon_ref}")
+
+            # Correction ici : on passe directement le résultat de to_deg
             exif_dict["GPS"] = {
-                piexif.GPSIFD.GPSLatitudeRef: lat_ref.encode(),
-                piexif.GPSIFD.GPSLatitude: to_deg(latitude),
-                piexif.GPSIFD.GPSLongitudeRef: lon_ref.encode(),
-                piexif.GPSIFD.GPSLongitude: to_deg(longitude),
+                piexif.GPSIFD.GPSVersionID: (2, 2, 0, 0),
+                piexif.GPSIFD.GPSLatitudeRef: lat_ref,
+                piexif.GPSIFD.GPSLatitude: lat_deg,
+                piexif.GPSIFD.GPSLongitudeRef: lon_ref,
+                piexif.GPSIFD.GPSLongitude: lon_deg,
             }
 
         exif_bytes = piexif.dump(exif_dict)
@@ -125,7 +135,7 @@ def prendre_photo(voltage):
 
     return filepath
 
-def envoyer_http(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None):
+def envoyer_http(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None,timeout=10):
     """
     Envoie une photo vers un serveur Immich via l'API.
     
@@ -164,7 +174,7 @@ def envoyer_http(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=
         # --- ÉTAPE 1 : TÉLÉVERSEMENT ---
         with open(file_path, 'rb') as f:
             files = {'assetData': (file_name, f, mime_type)}
-            response = requests.post(base_url, headers=headers, data=data, files=files)
+            response = requests.post(base_url, headers=headers, data=data, files=files,timeout=timeout)
         
         if response.status_code not in [200, 201]:
             print(f"❌ Erreur Upload {response.status_code} : {response.text}")
@@ -188,7 +198,7 @@ def envoyer_http(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=
                 'description': desc
             }
             # On utilise PUT pour mettre à jour les informations
-            res_upd = requests.put(update_url, headers=headers, json=update_payload)
+            res_upd = requests.put(update_url, headers=headers, json=update_payload,timeout=timeout)
             if res_upd.status_code == 200:
                 print(f"📝 Description mise à jour V")
             else:
@@ -201,7 +211,7 @@ def envoyer_http(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=
                 'ids': [asset_id]
             }
             
-            album_res = requests.put(album_url, headers=headers, json=album_data)
+            album_res = requests.put(album_url, headers=headers, json=album_data,timeout=timeout)
             
             if album_res.status_code in [200, 201]:
                 print(f"📂 Photo ajoutée à l'album {album_id}")
@@ -449,7 +459,8 @@ def main():
                              credentials["immich"]["url"],
                              credentials["immich"]["api_key"],
                              credentials["immich"]["album_id"],
-                             voltage)
+                             voltage,
+                             timeout=TIMEOUT)
                 resend_pending_photos(voltage)
             else:
                 print("Envoi annulé (pas de Wi-Fi)")
