@@ -51,7 +51,7 @@ def prendre_photo(voltage):
     now=datetime.now()
     timestamp_str = now.strftime("%Y-%m-%dT%H-%M-%S")
     timestamp_exif = now.strftime("%Y:%m:%d %H:%M:%S")
-    filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending{credentials["photo"]["extension"]}'
+    filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending.png'
     
     # 1. La base de la commande
     cmd = ["rpicam-still", "-o", filepath]
@@ -135,7 +135,8 @@ def prendre_photo(voltage):
 
     return filepath
 
-def envoyer_http(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None,timeout=10):
+
+def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None,timeout=10):
     """
     Envoie une photo vers un serveur Immich via l'API.
     
@@ -228,7 +229,7 @@ def get_pending_files(folder):
     files = os.listdir(folder)
     return [os.path.join(folder, f) for f in files if "pending" in f]
 
-def resend_pending_photos(voltage):
+def resend_pending_photos(voltage,upload_type):
     """Renvoie toutes les photos non envoyées (_pending) si le Wi-Fi est disponible"""
     if not is_connected():
         print("Pas de Wi-Fi, impossible de renvoyer les anciennes photos.")
@@ -245,7 +246,12 @@ def resend_pending_photos(voltage):
             for filepath in pending_files:
                 filename = os.path.basename(filepath)
                 try:
-                    envoyer_http(filepath)
+                    if upload_type =="agrocam" :
+                        envoyer_http_agrocam(filepath)
+                    elif upload_type == "immich" :
+                        envoyer_http_immich(filepath)
+                    else:
+                        print("upload_type inconnu : agrocam ? ou immich ?")
                 except Exception as e:
                     print(f"Échec renvoi {filename} : {e}")
         else :
@@ -452,20 +458,36 @@ def main():
         wifi_ok = wait_for_wifi(credentials["wifi"]["timeout"])
         
         # on n'envoie pas la photo tant que l'agrocam n'a pas de name
-        if credentials["immich"]["album_id"]!="":
-            if wifi_ok:
-                print("Envoi de la photo et des métadonnées via HTTP...")
-                envoyer_http(filepath,
-                             credentials["immich"]["url"],
-                             credentials["immich"]["api_key"],
-                             credentials["immich"]["album_id"],
-                             voltage,
-                             timeout=TIMEOUT)
-                resend_pending_photos(voltage)
-            else:
-                print("Envoi annulé (pas de Wi-Fi)")
-        else :
-            print("En attente d'un name d'agrocam")
+        if credentials["upload"]["type"]=="immich":
+            if credentials["upload"]["immich"]["album_id"]!="":
+                if wifi_ok:
+                    print("Envoi de la photo et des métadonnées via HTTP...")
+                    envoyer_http_immich(filepath,
+                                credentials["upload"]["immich"]["url"],
+                                credentials["upload"]["immich"]["api_key"],
+                                credentials["upload"]["immich"]["album_id"],
+                                voltage,
+                                timeout=TIMEOUT)
+                    resend_pending_photos(voltage,credentials["upload"]["type"])
+                else:
+                    print("Envoi annulé (pas de Wi-Fi)")
+            else :
+                print("En attente d'un album_id")
+        elif credentials["upload"]["type"]=="agrocam":
+            if credentials["upload"]["agrocam"]["name"]!="":
+                if wifi_ok:
+                    print("Envoi de la photo et des métadonnées via HTTP...")
+                    envoyer_http_agrocam(filepath,
+                                credentials["upload"]["agrocam"]["url"],
+                                credentials["upload"]["agrocam"]["name"],
+                                voltage,
+                                timeout=TIMEOUT)
+                    resend_pending_photos(voltage,credentials["upload"]["type"])
+                else:
+                    print("Envoi annulé (pas de Wi-Fi)")
+            else :
+                print("En attente d'un name d'agrocam")
+
 
     except KeyboardInterrupt:
         pass

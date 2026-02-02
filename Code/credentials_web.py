@@ -25,6 +25,19 @@ HTML_FORM = """
         .btn-save { background: #007bff; color: white; font-weight: bold; cursor: pointer; border: none; padding: 10px; margin-top: 20px; }
     </style>
 </head>
+
+<script>
+function updateUploadFields() {
+    const type = document.getElementById("upload_type").value;
+    document.getElementById("agrocam_fields").style.display =
+        type === "agrocam" ? "block" : "none";
+    document.getElementById("immich_fields").style.display =
+        type === "immich" ? "block" : "none";
+}
+
+document.addEventListener("DOMContentLoaded", updateUploadFields);
+</script>
+
 <body>
 
 <h1>Configuration Agrocam</h1>
@@ -45,12 +58,6 @@ HTML_FORM = """
 <form method="POST">
     <div class="section">
         <h2>Général</h2>
-        <label>URL API</label>
-        <input name="url_api" value="{{ c.general.url_api }}">
-
-        <label>Clé de l'Agrocam (8 caractères)</label>
-        <input name="name" value="{{ c.general.name }}">
-
         <label>Heures de déclenchement [HH:MM:SS,HH:MM:SS]</label>
         <input name="trigger_times" value="{{ trigger_times }}">
         
@@ -59,6 +66,37 @@ HTML_FORM = """
 
         <label>Timeout pour l'envoi d'une photo</label>
         <input type="number" step="1" name="sending_timeout" value="{{ c.general.sending_timeout }}" min="1" max="60" >
+    </div>
+
+    <div class="section">
+        <h2>Destination des photos</h2>
+
+        <label>Plateforme</label>
+        <select name="upload_type" id="upload_type" onchange="updateUploadFields()">
+            <option value="agrocam" {% if c.upload.type == "agrocam" %}selected{% endif %}>Agrocam</option>
+            <option value="immich" {% if c.upload.type == "immich" %}selected{% endif %}>Immich</option>
+        </select>
+
+        <!-- Agrocam -->
+        <div id="agrocam_fields">
+            <label>URL Agrocam</label>
+            <input name="agrocam_url" value="{{ c.upload.agrocam.url }}">
+
+            <label>Nom Agrocam (8 caractères)</label>
+            <input name="agrocam_name" value="{{ c.upload.agrocam.name }}">
+        </div>
+
+        <!-- Immich -->
+        <div id="immich_fields">
+            <label>URL Immich</label>
+            <input name="immich_url" value="{{ c.upload.immich.url }}">
+
+            <label>API Key Immich</label>
+            <input name="immich_api_key" value="{{ c.upload.immich.api_key }}">
+
+            <label>Album ID</label>
+            <input name="immich_album_id" value="{{ c.upload.immich.album_id }}">
+        </div>
     </div>
 
     <div class="section">
@@ -81,11 +119,6 @@ HTML_FORM = """
         <label>Hauteur (max 2592)</label>
         <input type="number" name="photo_height" value="{{ c.photo.size.height }}" min="1" max="2592">
 
-        <label>Extension</label>
-        <select name="photo_extension">
-            <option value=".png" {% if c.photo.extension == ".png" %}selected{% endif %}>.png</option>
-            <option value=".jpg" {% if c.photo.extension == ".jpg" %}selected{% endif %}>.jpg</option>
-        </select>
 
         <label>Qualité (10 à 100%)</label>
         <input type="number" name="photo_quality" value="{{ c.photo.quality }}" min="10" max="100">
@@ -125,10 +158,6 @@ def index():
 
     if request.method == "POST":
         # ---------- Validation ----------
-        name = request.form["name"].strip()
-        if len(name) != 8:
-            error = "Le champ name doit contenir exactement 8 caractères."
-
         wifi_timeout = request.form["wifi_timeout"].strip()
         if not wifi_timeout.isdigit():
             error = "Le timeout WiFi doit être un entier."
@@ -153,10 +182,28 @@ def index():
         except ValueError:
             error = "Largeur et hauteur doivent être des entiers."
 
+
         # ---------- Sauvegarde si OK ----------
         if error is None:
-            creds["general"]["url_api"] = request.form["url_api"].strip()
-            creds["general"]["name"] = name
+
+            upload_type = request.form["upload_type"]
+
+            creds["upload"]["type"] = upload_type
+
+            if upload_type == "agrocam":
+                name = request.form["agrocam_name"].strip()
+                if len(name) != 8:
+                    error = "Le nom Agrocam doit contenir exactement 8 caractères."
+
+                creds["upload"]["agrocam"]["url"] = request.form["agrocam_url"].strip()
+                creds["upload"]["agrocam"]["name"] = name
+
+            elif upload_type == "immich":
+                creds["upload"]["immich"]["url"] = request.form["immich_url"].strip()
+                creds["upload"]["immich"]["api_key"] = request.form["immich_api_key"].strip()
+                creds["upload"]["immich"]["album_id"] = request.form["immich_album_id"].strip()
+
+            # Paramètres généraux
             creds["general"]["trigger_times"] = triggers
             creds["general"]["min_voltage_pending_photo"]=float(request.form["min_voltage_pending_photo"])
             creds["general"]["sending_timeout"]=int(request.form["sending_timeout"])
@@ -167,7 +214,6 @@ def index():
 
             creds["photo"]["size"]["width"] = width
             creds["photo"]["size"]["height"] = height
-            creds["photo"]["extension"] = request.form["photo_extension"]
             creds["photo"]["timeout"]=int(request.form["photo_timeout"])
             creds["photo"]["quality"]=int(request.form["photo_quality"])
 
@@ -175,6 +221,7 @@ def index():
             message = "Modifications enregistrées ✔"
 
     trigger_times = "[" + ",".join(creds["general"]["trigger_times"]) + "]"
+
 
     return render_template_string(
         HTML_FORM,
