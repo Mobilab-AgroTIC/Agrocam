@@ -11,7 +11,6 @@ import sys
 import json
 import piexif
 from PIL import Image
-import mimetypes
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -19,11 +18,12 @@ with open(CREDENTIALS_FILE, "r") as f:
     credentials = json.load(f)
 
 
-IMMICH_SERVER = credentials["immich"]["url"]  # ex: "https://immich.example.com"
-API_KEY = credentials["immich"]["api_key"]              # Bearer token
-ALBUM_ID = credentials["immich"]["album_id"]            # Album cible
+IMMICH_SERVER = credentials["upload"]["immich"]["url"]  # ex: "https://immich.example.com"
+API_KEY = credentials["upload"]["immich"]["api_key"]              # Bearer token
+ALBUM_ID = credentials["upload"]["immich"]["album_id"]            # Album cible
 TIMEOUT = credentials["general"]["sending_timeout"]                                      # (connexion, lecture)
-
+AGROCAM_SERVER=credentials["upload"]["agrocam"]["url"]
+AGROCAM_NAME=credentials["upload"]["agrocam"]["name"]
 # Numéro de la broche GPIO à utiliser pour le servo moteur
 pwm_gpio = 18
 
@@ -51,7 +51,7 @@ def prendre_photo(voltage):
     now=datetime.now()
     timestamp_str = now.strftime("%Y-%m-%dT%H-%M-%S")
     timestamp_exif = now.strftime("%Y:%m:%d %H:%M:%S")
-    filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending{credentials["photo"]["extension"]}'
+    filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending.png'
     
     # 1. La base de la commande
     cmd = ["rpicam-still", "-o", filepath]
@@ -70,7 +70,8 @@ def prendre_photo(voltage):
     cmd.extend([
         "--width", str(credentials["photo"]["size"]["width"]),
         "--height", str(credentials["photo"]["size"]["height"]),
-        "-q", str(credentials["photo"]["quality"])
+        "-q", str(credentials["photo"]["quality"]),
+        "--awb", "auto"
     ])
 
 
@@ -126,7 +127,7 @@ def prendre_photo(voltage):
 
         exif_bytes = piexif.dump(exif_dict)
         im = Image.open(filepath)
-        im.save(filepath, "jpeg", exif=exif_bytes)
+        im.save(filepath, "png", exif=exif_bytes)
 
         print(f"[INFO] EXIF ajoutés : GPS + BatteryVoltage={voltage:.2f}V")
 
@@ -135,11 +136,77 @@ def prendre_photo(voltage):
 
     return filepath
 
-def envoyer_http(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None,timeout=10):
+def envoyer_http_agrocam(filepath, server_url=AGROCAM_SERVER,metadata_key=AGROCAM_NAME,voltage=None,timeout=10):
+    filename = os.path.basename(filepath)
+    
+    # 1. Séparer le nom de l'extension (ex: .png ou .jpg)
+    name_part, extension = os.path.splitext(filename)
+    
+    # 2. Découper le nom par les underscores
+    # Format attendu : "2025-08-12T14-30-00_4.79_pending"
+    parts = name_part.split('_')
+    
+    # La date est toujours le premier élément avant le premier "_"
+    date_acquisition_raw = parts[0] 
+    
+    # 3. Conversion de la date
+    try:
+        date_acquisition_dt = datetime.strptime(date_acquisition_raw, "%Y-%m-%dT%H-%M-%S")
+        date_acquisition_iso = date_acquisition_dt.isoformat(timespec='seconds')
+    except ValueError as e:
+        print(f"Erreur format date dans le nom de fichier : {e}")
+        return # On arrête si la date est illisible
+
+    # 4. Dates d'envoi et métadonnées
+    date_envoi = datetime.now(timezone.utc)
+    date_envoi_str = date_envoi.strftime("%Y-%m-%dT%H:%M:%S")
+
+    # 5. Préparation du fichier pour l'envoi
+    upload_filename = f"{metadata_key}_{date_acquisition_iso}_{date_envoi_str}_{voltage}.png"
+    
+
+    metadata = {
+        'key': metadata_key,
+        'power_level': voltage,
+        'date_acquisition': date_acquisition_iso,
+    }
+
+    try:
+        with open(filepath, 'rb') as f:
+            files = {'photo': (upload_filename, f, 'image/png')}
+            print(f"Envoi de {filename}")
+            
+            response = requests.post(
+                server_url, 
+                files=files, 
+                data=metadata, 
+                timeout=timeout
+            )
+            print("Headers réponse :", response.headers)
+            response.raise_for_status()
+            
+        if response.status_code in [200, 201]:
+            print("Photo envoyée avec succès !")
+            # On remplace "_pending" par "_sent" tout en gardant la bonne extension
+            new_path = filepath.replace("_pending", "_sent")
+            os.rename(filepath, new_path)
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Échec de la requête HTTP : {e}", file=sys.stderr)
+    except requests.exceptions.HTTPError as e:
+        response = e.response
+        print("❌ Erreur HTTP", file=sys.stderr)
+        print(f"Status code : {response.status_code}", file=sys.stderr)
+        print("Headers réponse :", file=sys.stderr)
+        print(response.headers, file=sys.stderr)
+        print("Corps de la réponse :", file=sys.stderr)
+        print(response.text, file=sys.stderr)
+
+def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None,timeout=10):
     """
     Envoie une photo vers un serveur Immich via l'API.
     
-    :param file_path: Chemin local de l'image (ex: '/home/pi/photo.jpg')
+    :param file_path: Chemin local de l'image (ex: '/home/pi/photo.png')
     :param server_url: URL de votre instance (ex: 'http://192.168.1.50:2283')
     :param api_key: Votre clé API Immich
     """
@@ -167,13 +234,11 @@ def envoyer_http(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=
     }
 
     print("données envoyées avec la photo : ",data)
-    mime_type, _ = mimetypes.guess_type(file_path)
-    mime_type = mime_type or 'application/octet-stream'
 
     try:
         # --- ÉTAPE 1 : TÉLÉVERSEMENT ---
         with open(file_path, 'rb') as f:
-            files = {'assetData': (file_name, f, mime_type)}
+            files = {'assetData': (file_name, f, "image/png")}
             response = requests.post(base_url, headers=headers, data=data, files=files,timeout=timeout)
         
         if response.status_code not in [200, 201]:
@@ -228,7 +293,7 @@ def get_pending_files(folder):
     files = os.listdir(folder)
     return [os.path.join(folder, f) for f in files if "pending" in f]
 
-def resend_pending_photos(voltage):
+def resend_pending_photos(voltage,upload_type):
     """Renvoie toutes les photos non envoyées (_pending) si le Wi-Fi est disponible"""
     if not is_connected():
         print("Pas de Wi-Fi, impossible de renvoyer les anciennes photos.")
@@ -245,7 +310,12 @@ def resend_pending_photos(voltage):
             for filepath in pending_files:
                 filename = os.path.basename(filepath)
                 try:
-                    envoyer_http(filepath)
+                    if upload_type =="agrocam" :
+                        envoyer_http_agrocam(filepath)
+                    elif upload_type == "immich" :
+                        envoyer_http_immich(filepath)
+                    else:
+                        print("upload_type inconnu : agrocam ? ou immich ?")
                 except Exception as e:
                     print(f"Échec renvoi {filename} : {e}")
         else :
@@ -452,20 +522,36 @@ def main():
         wifi_ok = wait_for_wifi(credentials["wifi"]["timeout"])
         
         # on n'envoie pas la photo tant que l'agrocam n'a pas de name
-        if credentials["immich"]["album_id"]!="":
-            if wifi_ok:
-                print("Envoi de la photo et des métadonnées via HTTP...")
-                envoyer_http(filepath,
-                             credentials["immich"]["url"],
-                             credentials["immich"]["api_key"],
-                             credentials["immich"]["album_id"],
-                             voltage,
-                             timeout=TIMEOUT)
-                resend_pending_photos(voltage)
-            else:
-                print("Envoi annulé (pas de Wi-Fi)")
-        else :
-            print("En attente d'un name d'agrocam")
+        if credentials["upload"]["type"]=="immich":
+            if credentials["upload"]["immich"]["album_id"]!="":
+                if wifi_ok:
+                    print("Envoi de la photo et des métadonnées via HTTP...")
+                    envoyer_http_immich(filepath,
+                                credentials["upload"]["immich"]["url"],
+                                credentials["upload"]["immich"]["api_key"],
+                                credentials["upload"]["immich"]["album_id"],
+                                voltage,
+                                timeout=TIMEOUT)
+                    resend_pending_photos(voltage,credentials["upload"]["type"])
+                else:
+                    print("Envoi annulé (pas de Wi-Fi)")
+            else :
+                print("En attente d'un album_id")
+        elif credentials["upload"]["type"]=="agrocam":
+            if credentials["upload"]["agrocam"]["name"]!="":
+                if wifi_ok:
+                    print("Envoi de la photo et des métadonnées via HTTP...")
+                    envoyer_http_agrocam(filepath,
+                                credentials["upload"]["agrocam"]["url"],
+                                credentials["upload"]["agrocam"]["name"],
+                                voltage,
+                                timeout=TIMEOUT)
+                    resend_pending_photos(voltage,credentials["upload"]["type"])
+                else:
+                    print("Envoi annulé (pas de Wi-Fi)")
+            else :
+                print("En attente d'un name d'agrocam")
+
 
     except KeyboardInterrupt:
         pass
