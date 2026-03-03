@@ -112,9 +112,6 @@ On pourrait ici encore grandement améliorer la consommation du raspberry en opt
 
 Attention à de pas rebooter le raspberry à ce stade. Rien de grave mais au démarrage le service agrocam va se lancer mais il ne pourra pas bien s'executer (cartes wittypi et camera absente), les conséquences n'ont pas encore été étudier. Il ne semble pas que cela pose un problème mais on ne sait jamais
 
-Eteignez le raspberry avec
-```sudo shutdown -h now```
-
 ** Amélioration possibles **
 ```sudo nano /boot/firmware/config.txt```
 Ajouter ceci
@@ -143,25 +140,23 @@ networkmanager-wait-online.service car agrocam.py peut démarrer même si on n'a
 sudo systemctl disable ModemManager bluetooth NetworkManager-wait-online.service
 
 
+Eteignez le raspberry avec
+```sudo shutdown -h now```
+
 
 # 9. Récupérer la carte SD et créer une image
-Une fois le raspberry éteint (LED verte éteinte et qui ne clignote plus), récupérez la carte SD et insérez là dans votre PC. A ce stade je donne la procédure sur Windows 11 mais sur Linux cela se fait bien avec la commande dd.
+Une fois le raspberry éteint (LED verte éteinte et qui ne clignote plus), récupérez la carte SD et insérez là dans votre PC. A ce stade je donne la procédure sur Windows 11.
 
 Installez le logiciel Win32DiskImager
 Ouvrez le
 Il y a deux champ à remplir 
-fichier image : correspond à l'emplacement où vous allez écrire votre image (il faut au moins 16 Go de place). On pourra nommer le fichier agrocam.img
+fichier image : correspond à l'emplacement où vous allez écrire votre image (attention il vous faut de la place sur votre disque, équivalente à la taille de la carte SD). On pourra nommer le fichier agrocam.img
 Périphérique : correspond à l'emplacement de votre carte SD. [:\D] dans mon cas
 
 Il n'y a plus qu'à cliquer sur "Lire" cela peut prendre 10 minutes
 
 # 10. Réduire la taille de votre fichier *agrocam.img*
-L'image fait maintenant environ 16 Go qui correspond à la taille de la carte SD. Or l'OS et les scripts que nous avons rajouté ne prennent pas toute cette place. On va donc évacuer de l'image tous les octets qui ne "servent à rien" en utilisant PiShrink.
-Vous pouvez utiliser ce logiciel sur Windows si vous arrivez à lancer WSL pour avoir une virtualisation d'un environnement linux. Ma machine ne le permet pas alors j'ai fait les étapes suivantes :
-- Déplacement du fichier agrocam.img sur une clé USB de grande capacité
-- Ecriture d'un OS Raspberry pi lite uniquement pour cette opération. Sur une autre carte SD vous pouvez reproduire l'étape 1
-- Ouvrir une connexion SSH avec le raspberry et dans un invite de commande suivre les étapes suivante
-- Avec un adapteur micro-USB mâle - USB A femelle branchez la clé USB qui contient agrocam.img au raspberry 
+L'image fait maintenant environ 16 Go qui correspond à la taille de la carte SD. Or l'OS et les scripts que nous avons rajouté ne prennent pas toute cette place. On va donc évacuer de l'image tous les octets qui ne "servent à rien" en utilisant PiShrink grace à WSL2 sur Windows 11.
 ```
 wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
 ```
@@ -171,118 +166,9 @@ chmod +x pishrink.sh
 ```
 Pour le rendre activable
 ```
-sudo mount /dev/sda1 /mnt
+sudo ./pishrink.sh /C:/Mon/Chemin/vers/agrocam.img
 ```
-Pour monter la clé USB
+Puis compression de l'image :
 ```
-sudo ./pishrink.sh /mnt/agrocam.img
+xz -vk /C:/Mon/Chemin/vers/agrocam.img
 ```
-Pour lancer pishrink. Attention cela va écraser le fichier agrocam.img par une nouvelle version moins volumineuse (environ 4Go)
-
-Actuellement Pishrink a conservé uniquement les parties utiles de la partition (qui correspondent réellement à des fichiers). Mais il est encore possible de compresser tout ce petit monde. La commande suivante est à exécuter sur le raspberry Pi Zero. Mais attention comme c'est pas une machine de guerre, cette simple commande peut facilement prendre plus d'une heure à s'executer.
-
-```
-xz -vk /mnt/agroocam.img
-```
-Si cela est trop long, vous pouvez récupérer le fichier agrocam.img de 4Go sur votre windows et dans Powershell lancer la commande suivante
-
-
-Cela va créer un nouveau fichier d'environ 500 Mo agrocam.img.gz
-
-C'est lui qui sera notre image officielle de l'Agrocam
-
-# 11. Autre alternative pour réduire l'image (synthèse de gemini)
-
-C'est un excellent réflexe de noter tout ça ! On a traversé pas mal d'embûches techniques, et ce tutoriel servira de "guide de survie" pour tes futures réplications.
-
-Voici la synthèse complète de ta méthode, de la création de l'image à la compression finale.
-🛠️ Tutoriel : Clonage et Optimisation d'Image Raspberry Pi
-Pourquoi avons-nous dû ruser avec le Raspberry Pi ?
-
-Le problème venait d'un conflit de génération entre les systèmes de fichiers :
-
-    Ton PC (Ubuntu 22.04) : Utilise une version ancienne des outils (e2fsprogs v1.46).
-
-    Raspberry Pi OS (Bookworm) : Utilise une version récente (v1.47).
-
-    Le conflit : Les images récentes activent une option nommée orphan_file (FEATURE_C12). Ton Ubuntu, trop vieux, ne comprenait pas cette option et bloquait tout. Nous avons donc utilisé le Raspberry Pi (à jour) pour désactiver cette option et rendre l'image compatible avec ton PC.
-
-Étape 1 : Création de l'image "Master" (Windows)
-
-    Insère la carte SD de ton projet dans ton PC Windows.
-
-    Lance Win32DiskImager.
-
-    Sélectionne la lettre de ta carte SD (ex: D: ou E:).
-
-    Choisis un nom de fichier sur ta clé USB de grande capacité (ex: agrocam_brut.img).
-
-    Clique sur Read (Lire). Tu obtiens un fichier de 15 Go.
-
-Étape 2 : Préparation sur le Raspberry Pi Zero (SSH)
-
-Branche ta clé USB sur le Pi Zero (via un adaptateur micro-USB OTG) et connecte-toi en SSH.
-
-1. Identifier et monter la clé USB :
-Bash
-
-```lsblk```                              # Repère ta clé (souvent sda1)
-Crée un dossier de montage en remplaçant le X par le numéro sorti par lsblk
-```sudo mount /dev/sdaX /mnt```
-Monte la clé
-
-2. Rendre l'image compatible (Le "Fix" tune2fs) : On utilise le Pi Zero pour "rétrograder" le système de fichiers de l'image.
-Bash
-
-**Crée un périphérique virtuel pour accéder aux partitions de l'image**
-```sudo losetup -fP /mnt/agrocam.img```
-
-```lsblk```                          Vérifie le nom du loop (ex: loop0p2)
-
-# Répare les sommes de contrôle (checksums)
-```sudo e2fsck -f -y /dev/loopXp2```
-
-# Désactive l'option "orphan_file" qui faisait planter Ubuntu
-sudo tune2fs -O ^orphan_file /dev/loopXp2
-
-# Libère proprement le fichier
-sudo losetup -d /dev/loopX
-cd ~
-sudo umount /mnt               # Éjecte virtuellement la clé
-
-Étape 3 : Réduction sur le PC (Ubuntu)
-
-Maintenant que l'image est compatible, on utilise la puissance de ton PC pour gagner du temps.
-
-1. Lancement de PiShrink : Branche la clé sur ton PC Ubuntu et va dans le dossier de la clé :
-Bash
-
-# Télécharge le script si tu ne l'as pas
-wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
-chmod +x pishrink.sh
-
-# Lance la réduction (ton image va passer de 15 Go à ~4,2 Go)
-sudo ./pishrink.sh agrocam_brut.img agrocam_shrinked.img
-
-Étape 4 : Compression maximale (.img.xz)
-
-Pour que ton fichier soit facile à stocker ou à partager, on utilise la compression la plus forte.
-Bash
-
-# Compression en format .xz (très efficace)
-# -v : voir la progression / -k : garde l'original
-xz -vk agrocam_shrinked.img
-
-Résultat final : Tu obtiens un fichier agrocam_shrinked.img.xz d'environ 1 à 2 Go, prêt à être flashé sur n'importe quelle carte SD (même une de 8 Go !) avec Raspberry Pi Imager.
-Résumé des outils utilisés
-
-    Win32DiskImager : Pour la copie brute sous Windows.
-
-    e2fsck / tune2fs : Pour la réparation et la compatibilité descendante.
-
-    PiShrink : Pour supprimer l'espace vide de l'image.
-
-    XZ : Pour la compression finale.
-
-Tout semble opérationnel pour ta production en série ! Est-ce que tu souhaites que je t'aide à automatiser la configuration du Wi-Fi pour que tes futurs clones se connectent tout seuls au premier démarrage ?
-
