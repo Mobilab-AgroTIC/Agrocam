@@ -113,6 +113,15 @@ document.addEventListener("DOMContentLoaded", updateUploadFields);
 
     <div class="section">
         <h2>Photo</h2>
+        <label>Format</label>
+        <select name="photo_format">
+            <option value="jpg" {% if c.photo.format == "jpg" %}selected{% endif %}>JPG</option>
+            <option value="png" {% if c.photo.format == "png" %}selected{% endif %}>PNG</option>
+        </select>
+        <label>Latitude (optionnel)</label>
+        <input type="text" name="photo_latitude" value="{{ c.photo.location.latitude }}">
+        <label>Longitude (optionnel)</label>
+        <input type="text" name="photo_longitude" value="{{ c.photo.location.longitude }}">
         <label>Largeur (max 4608)</label>
         <input type="number" name="photo_width" value="{{ c.photo.size.width }}" min="1" max="4608">
 
@@ -212,10 +221,13 @@ def index():
             creds["wifi"]["password"] = request.form["wifi_password"].strip()
             creds["wifi"]["timeout"] = int(wifi_timeout)
 
+            creds["photo"]["format"] = request.form["photo_format"]
             creds["photo"]["size"]["width"] = width
             creds["photo"]["size"]["height"] = height
             creds["photo"]["timeout"]=int(request.form["photo_timeout"])
             creds["photo"]["quality"]=int(request.form["photo_quality"])
+            creds["photo"]["location"]["latitude"]=float(request.form.get("photo_latitude", "").strip())
+            creds["photo"]["location"]["longitude"]=float(request.form.get("photo_longitude", "").strip())
 
             save_credentials(creds)
             message = "Modifications enregistrées ✔"

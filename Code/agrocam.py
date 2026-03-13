@@ -47,11 +47,11 @@ def angle_to_percent (angle) :
 
     return start + angle_as_percent
 
-def prendre_photo(voltage):
+def prendre_photo(voltage,extension="png"):
     now=datetime.now()
     timestamp_str = now.strftime("%Y-%m-%dT%H-%M-%S")
     timestamp_exif = now.strftime("%Y:%m:%d %H:%M:%S")
-    filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending.png'
+    filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending.{extension}'
     
     # 1. La base de la commande
     cmd = ["rpicam-still", "-o", filepath]
@@ -94,8 +94,8 @@ def prendre_photo(voltage):
         )
 
         # --- GPS ---
-        latitude = credentials["photo"]["location"]["latitude"]
-        longitude = credentials["photo"]["location"]["longitude"]
+        latitude = float(credentials["photo"]["location"]["latitude"])
+        longitude = float(credentials["photo"]["location"]["longitude"])
 
         if latitude is not None and longitude is not None:
             def to_deg(value):
@@ -127,7 +127,8 @@ def prendre_photo(voltage):
 
         exif_bytes = piexif.dump(exif_dict)
         im = Image.open(filepath)
-        im.save(filepath, "png", exif=exif_bytes)
+        extension_exif = "jpeg" if extension.lower() == "jpg" else extension.lower()
+        im.save(filepath, extension_exif, exif=exif_bytes)
 
         print(f"[INFO] EXIF ajoutés : GPS + BatteryVoltage={voltage:.2f}V")
 
@@ -162,7 +163,7 @@ def envoyer_http_agrocam(filepath, server_url=AGROCAM_SERVER,metadata_key=AGROCA
     date_envoi_str = date_envoi.strftime("%Y-%m-%dT%H:%M:%S")
 
     # 5. Préparation du fichier pour l'envoi
-    upload_filename = f"{metadata_key}_{date_acquisition_iso}_{date_envoi_str}_{voltage}.png"
+    upload_filename = f"{metadata_key}_{date_acquisition_iso}_{date_envoi_str}_{voltage}{extension}"
     
 
     metadata = {
@@ -173,7 +174,7 @@ def envoyer_http_agrocam(filepath, server_url=AGROCAM_SERVER,metadata_key=AGROCA
 
     try:
         with open(filepath, 'rb') as f:
-            files = {'photo': (upload_filename, f, 'image/png')}
+            files = {'photo': (upload_filename, f, f'image/{extension.lstrip(".")}')}
             print(f"Envoi de {filename}")
             
             response = requests.post(
@@ -202,7 +203,7 @@ def envoyer_http_agrocam(filepath, server_url=AGROCAM_SERVER,metadata_key=AGROCA
         print("Corps de la réponse :", file=sys.stderr)
         print(response.text, file=sys.stderr)
 
-def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None,timeout=10):
+def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID,voltage=None,timeout=10):
     """
     Envoie une photo vers un serveur Immich via l'API.
     
@@ -210,13 +211,16 @@ def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, al
     :param server_url: URL de votre instance (ex: 'http://192.168.1.50:2283')
     :param api_key: Votre clé API Immich
     """
+    filename = os.path.basename(filepath)
+    # Récupération des métadonnées du fichier pour l'ID unique
+    stats = os.stat(filepath)
     
+    # 1. Séparer le nom de l'extension (ex: .png ou .jpg)
+    filename, extension = os.path.splitext(filename)
     # On nettoie l'URL pour s'assurer qu'elle finit par /api
     base_url = f"{server_url}/api/assets"
 
-    # Récupération des métadonnées du fichier pour l'ID unique
-    stats = os.stat(file_path)
-    file_name = os.path.basename(file_path)
+
     
     headers = {
         'Accept': 'application/json',
@@ -226,7 +230,7 @@ def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, al
     # Données requises par Immich pour l'upload
     # deviceAssetId doit être unique pour éviter les doublons
     data = {
-        'deviceAssetId': f'{file_name}-{stats.st_mtime}',
+        'deviceAssetId': f'{filename}-{stats.st_mtime}',
         'deviceId': 'raspberry-pi',
         'fileCreatedAt': datetime.fromtimestamp(stats.st_mtime).isoformat(),
         'fileModifiedAt': datetime.fromtimestamp(stats.st_mtime).isoformat(),
@@ -237,8 +241,8 @@ def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, al
 
     try:
         # --- ÉTAPE 1 : TÉLÉVERSEMENT ---
-        with open(file_path, 'rb') as f:
-            files = {'assetData': (file_name, f, "image/png")}
+        with open(filepath, 'rb') as f:
+            files = {'assetData': (filepath, f, f"image/{extension}")}
             response = requests.post(base_url, headers=headers, data=data, files=files,timeout=timeout)
         
         if response.status_code not in [200, 201]:
@@ -248,8 +252,8 @@ def envoyer_http_immich(file_path, server_url=IMMICH_SERVER, api_key=API_KEY, al
         asset_info = response.json()
         asset_id = asset_info.get('id')
         print(f"✅ Photo envoyée (ID: {asset_id})")
-        new_path = file_path.replace("_pending.png", "_sent.png")
-        os.rename(file_path, new_path)
+        new_path = filepath.replace(f"_pending{extension}", f"_sent{extension}")
+        os.rename(filepath, new_path)
 
         # --- ÉTAPE 2 : MISE À JOUR DE LA DESCRIPTION (Le voltage) ---
         if asset_id:
@@ -512,7 +516,7 @@ def main():
         sleep(0.2)
         pwm.ChangeDutyCycle(0)
         sleep(0.1)
-        filepath = prendre_photo(voltage)
+        filepath = prendre_photo(voltage,extension=credentials["photo"]["format"])
         print(f"Photo prise : {filepath}")
         pwm.ChangeDutyCycle(angle_to_percent(90))
         sleep(0.2)
