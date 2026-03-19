@@ -212,6 +212,8 @@ def index():
                 creds["upload"]["immich"]["api_key"] = request.form["immich_api_key"].strip()
                 creds["upload"]["immich"]["album_id"] = request.form["immich_album_id"].strip()
 
+            lat_str = request.form.get("photo_latitude", "").strip()
+            lon_str = request.form.get("photo_longitude", "").strip()
             # Paramètres généraux
             creds["general"]["trigger_times"] = triggers
             creds["general"]["min_voltage_pending_photo"]=float(request.form["min_voltage_pending_photo"])
@@ -226,8 +228,8 @@ def index():
             creds["photo"]["size"]["height"] = height
             creds["photo"]["timeout"]=int(request.form["photo_timeout"])
             creds["photo"]["quality"]=int(request.form["photo_quality"])
-            creds["photo"]["location"]["latitude"]=float(request.form.get("photo_latitude", "").strip())
-            creds["photo"]["location"]["longitude"]=float(request.form.get("photo_longitude", "").strip())
+            creds["photo"]["location"]["latitude"]=float(lat_str) if lat_str else 0.0
+            creds["photo"]["location"]["longitude"]=float(lon_str) if lon_str else 0.0
 
             save_credentials(creds)
             message = "Modifications enregistrées ✔"

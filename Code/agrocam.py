@@ -242,7 +242,7 @@ def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, alb
     try:
         # --- ÉTAPE 1 : TÉLÉVERSEMENT ---
         with open(filepath, 'rb') as f:
-            files = {'assetData': (filepath, f, f"image/{extension}")}
+            files = {'assetData': (filepath, f, f"image/{extension.lstrip('.')}")}
             response = requests.post(base_url, headers=headers, data=data, files=files,timeout=timeout)
         
         if response.status_code not in [200, 201]:
