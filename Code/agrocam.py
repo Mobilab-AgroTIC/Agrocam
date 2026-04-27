@@ -541,8 +541,8 @@ def main():
                     print("Envoi annulé (pas de Wi-Fi)")
             else :
                 print("En attente d'un album_id")
-        elif credentials["upload"]["type"]=="agrocam":
-            if credentials["upload"]["agrocam"]["name"]!="":
+        elif credentials["upload"]["type"] == "agrocam":
+            if credentials["upload"]["agrocam"]["name"] != "":
                 if wifi_ok:
                     print("Envoi de la photo et des métadonnées via HTTP...")
                     envoyer_http_agrocam(filepath,
