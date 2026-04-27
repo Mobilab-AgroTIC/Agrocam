@@ -128,8 +128,10 @@ Pour finaliser l'installation de wittypi :
 sudo reboot
 ```
 Une fois l'Agrocam redémarrée plusieurs comportement sont possible en fonction de l'état du jumper de maintenance et de la variable "debug_mode" :
-||debug_mode=false|debug_mode=true|
-
+|   |debug_mode=false|debug_mode=true|
+|---|----------------|---------------|
+|Jumper position normale|**Fonctionnement normal :** L'Agrocam démarre, prend une photo, essaye de se connecter aux wifi connus, d'envoyer les photos en pending, et s'éteint|L'Agrocam démarre, essaye de se connecter au wifi, d'envoyer des photos, mais ne s'éteint pas|
+|Jumper position maintenance|**Fonctionnement maintenance**: l'Agrocam crée un hotspot wifi, affiche une interface de paramétrage sur agrocam.local:5000||
 # 8. Dernière petites étapes avant extinction
 Pour eviter d'embarquer trop de trace de notre intervention. vous pouvez faire les étapes suivantes
 Videz le cache APT : ```sudo apt clean```
