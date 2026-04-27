@@ -1,8 +1,8 @@
 **Ce readme permet de recréer le fichier agrocam.img à destination des développeurs. Si vous souhaitez simplement assembler une agrocam rendez vous sur https://mobilab.agrotic.org/2025/02/18/agrocam/**
-Ce Readme a pour objectif de détailler les étapes de création du fichier agrocam.img. Ila pour but de servir de base à la reproduction du fichier agrocam.img s'il venait à être perdu ou si de nouvelle fonctionnalités devaient être ajoutées.
+Ce Readme a pour objectif de détailler les étapes de création du fichier agrocam.img. Il a pour but de servir de base à la reproduction du fichier agrocam.img s'il venait à être perdu ou si de nouvelle fonctionnalités devaient être ajoutées.
 
 Pour réaliser ces étapes vous avez besoin de :
-- Une carte Raspberry Pi Zero
+- Une carte Raspberry Pi Zero 2
 - Une carte SD 16Go
 - Un PC idealement sous une distribution Linux pour créer le fichier .img et le compresser. Pour ma part j'ai un windows 11 dont la virtualisation est bloquée (machine professionnelle), c'est un peu plus long mais ça se fait bien.
 - Un smartphone dont vous pouvez changer le nom de l'acces point (ou partage de connexion) donc idéalement un Android
@@ -23,7 +23,7 @@ Insérez une carte SD de 16Go et suivez les étapes de raspberry pi imager
 |Nom d'hôte|agrocam|
 |Localisation|Ville capitale : Paris <br> Fuseau horaire : Europe/Paris <br> Type de clavier : fr|
 |Utilisateur|Nom d'utilisateur : pi <br> Mot de passe : *à définir et ne surtout pas perdre pour vous connecter en ssh par la suite* |
-|Wi-Fi|SSID : agrocam <br> Mot de passe : agrocam2026 <br> *Vous permettra de vous connecter au raspberry en générant un hotspot wifi du même nom avec un smartphone. Servira ensuite régulièrement pour assurer la maintenance des Agrocams* |
+|Wi-Fi|SSID : agrocam <br> Mot de passe :  <br> *Vous permettra de vous connecter au raspberry en générant un hotspot wifi du même nom avec un smartphone. Servira ensuite régulièrement pour assurer la maintenance des Agrocams.* |
 |Accès à distance|Activer le SSH <br> Mécanisme d'authentification : utiliser le mot de passe pour l'authentification |
 |Raspberry Pi Connect|Ne pas activer|
 
@@ -41,40 +41,24 @@ Ouvrir Putty
 
 ```
 sudo apt-get update
-sudo apt install python3-flask
-sudo apt install python3-piexif
+sudo apt upgrade
+sudo apt install python3-flask python3-piexif
 ```
 
 # 4. Téléverser les scripts depuis Winscp
 Depuis WinSCP téléverser les scripts suivant dans */home/pi/*
 
 *agrocam.py*
+*usb_storage*
+*wittypi.py*
 *credentials_web.py*
 *crendentials.json*
 
-Puis dans putty on supprime les caractères spéciaux. Cette étapes est certainement à supprimer mais à une époque, le fait d'éditer des scripts dans VSC générait des retour de chariot dans le texte du script qui n'étaient pas compris par python une fois sur le Raspberry. Cette étapes est certainement facultative mais voici les informations au cas où :
-```
-sed -i -e 's/\r$//' agrocam.py
-sed -i -e 's/\r$//' credentials_web.py
-sed -i -e 's/\r$//' credentials.json
-```
+Dans *credentials.json* un paramètre "debug_mode":false peut être passer en true pour éviter que l'Agrocam n'active pas son hotspot et qu'elle soit ainsi accessible sur votre SSID (partage de connexion "agrocam")
 
-# 5. Création du répertoire pour les photos
-```
-sudo mkdir Agrocam
-sudo chmod 777 Agrocam
-```
 
-# 6. Installation wittyPi
-```
-wget http://www.uugear.com/repo/WittyPi4/install.sh
-sudo sh install.sh
-```
-Le script vous demande de rebooter, faites-le
-``` 
-sudo reboot
-```
-# 7. Création et activation des services systemctl
+
+# 5. Création et activation des services systemctl
 Depuis WinSCP vous ne pouvez pas téléverser les fichiers .service dans leur lieu de destination (/lib/systemd/system) car il faut être en mode admin
 On va donc créer les fichiers agrocam.service, agrocam-wifi.service,agrocam-flask.service à la main
 ```
@@ -103,14 +87,30 @@ On peut enfin activer l'ensemble des services
 sudo systemctl enable agrocam.service
 sudo systemctl disable agrocam-flask.service
 ```
-# 8. Dernière petites étapes avant extinction
-Pour eviter d'embarquer trop de trace de notre intervention. vous pouvez faire les étapes suivantes
-Videz le cache APT : ```sudo apt clean```
-Supprimez l'historique bash : ```sudo cat /dev/null > ~/.bash_history```
 
-On pourrait ici encore grandement améliorer la consommation du raspberry en optimisant ses services. Les chatbot Gemini et Chatgpt ont pu faire différentes recommandations mais pour l'instant rien n'a encore été implémentés car non testé. On peut lister parmis les services potentiellement désactivables : services autour du multimedia (hdmi), le bluetooth, une multitude de service avancé sur la gestion du réseau et des fichiers mais qui sont tous assez interdépendant donc risqué de les désactiver.
+# 6. Installation wittyPi
+```
+wget http://www.uugear.com/repo/WittyPi4/install.sh
+sudo sh install.sh
+```
+Le script vous demande de rebooter, On le fera plus tard
 
-Attention à de pas rebooter le raspberry à ce stade. Rien de grave mais au démarrage le service agrocam va se lancer mais il ne pourra pas bien s'executer (cartes wittypi et camera absente), les conséquences n'ont pas encore été étudier. Il ne semble pas que cela pose un problème mais on ne sait jamais
+
+# 7. Suppression des services inutiles (valabe sur raspberry pi zero 2)
+
+sudo systemctl disable \
+  cloud-final.service \
+  cloud-init-main.service \
+  cloud-init-local.service \
+  cloud-config.service \
+  cloud-init-network.service \
+  apt-daily.service \
+  apt-daily-upgrade.service \
+  bluetooth.service
+
+sudo systemctl disable --now apt-daily.timer
+sudo systemctl disable --now apt-daily-upgrade.timer
+sudo systemctl disable --now fstrim.timer
 
 ** Amélioration possibles **
 ```sudo nano /boot/firmware/config.txt```
@@ -121,23 +121,19 @@ dtoverlay=disable-bt
 \# Désactive l'HDMI (gain de conso et de temps)
 hdmi_blanking=2
 
+# 8. Finalisation des installation
+Pour finaliser l'installation de wittypi :
 
-```sudo nano /etc/dhcpcd.conf```
-interface wlan0
-static ip_address=192.168.1.100/24
-static routers=192.168.1.1
-static domain_name_servers=1.1.1.1
+``` 
+sudo reboot
+```
+Une fois l'Agrocam redémarrée plusieurs comportement sont possible en fonction de l'état du jumper de maintenance et de la variable "debug_mode" :
+||debug_mode=false|debug_mode=true|
 
-**Eteindre des services inutiles**
-Desactiver cloud-init qui est inutile (pour machines virtuelles)
-```sudo apt-get purge cloud-init -y```
-```sudo rm -rf /etc/cloud/ && sudo rm -rf /var/lib/cloud/```
-
-Desactiver ModemManager car on communique tout le temps en wifi
-Idem pour bluetooth car on s'en sert pas
-networkmanager-wait-online.service car agrocam.py peut démarrer même si on n'a pas encore le wifi
-
-sudo systemctl disable ModemManager bluetooth NetworkManager-wait-online.service
+# 8. Dernière petites étapes avant extinction
+Pour eviter d'embarquer trop de trace de notre intervention. vous pouvez faire les étapes suivantes
+Videz le cache APT : ```sudo apt clean```
+Supprimez l'historique bash : ```sudo cat /dev/null > ~/.bash_history```
 
 
 Eteignez le raspberry avec
@@ -174,12 +170,17 @@ xz -vk /C:/Mon/Chemin/vers/agrocam.img
 ```
 
 
-# 11. Update pour rapsberry pi zero 2
-Voici les services gourmand en temps au boot qui peuvent être desactivés
-sudo systemctl disable cloud-init.service
-sudo systemctl disable cloud-config.service
-sudo systemctl disable cloud-init-local.service
-sudo systemctl disable cloud-final.service
-
-# 12. Synchronisation de l'heure
+# 12. Quelques commandes utiles
+synchroniser l'heure avec le réseau :
+```
 sudo timedatectl set-ntp true
+```
+
+Analyser ce qui prend du temps au boot
+
+```
+systemd-analyze
+systemd-analyze blame
+```
+
+sudo journalctl -u agrocam
