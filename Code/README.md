@@ -172,3 +172,14 @@ Puis compression de l'image :
 ```
 xz -vk /C:/Mon/Chemin/vers/agrocam.img
 ```
+
+
+# 11. Update pour rapsberry pi zero 2
+Voici les services gourmand en temps au boot qui peuvent être desactivés
+sudo systemctl disable cloud-init.service
+sudo systemctl disable cloud-config.service
+sudo systemctl disable cloud-init-local.service
+sudo systemctl disable cloud-final.service
+
+# 12. Synchronisation de l'heure
+sudo timedatectl set-ntp true

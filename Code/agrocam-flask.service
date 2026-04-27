@@ -6,7 +6,7 @@ Description=Agrocam Flask Interface
 Type=idle
 ExecStart=/usr/bin/python3 /home/pi/credentials_web.py
 WorkingDirectory=/home/pi
-User=pi
+User=root
 Restart=always
 
 [Install]

@@ -11,7 +11,7 @@ import sys
 import json
 import piexif
 from PIL import Image
-
+from usb_storage import setup_storage_path
 CREDENTIALS_FILE = "credentials.json"
 
 with open(CREDENTIALS_FILE, "r") as f:
@@ -22,18 +22,24 @@ IMMICH_SERVER = credentials["upload"]["immich"]["url"]  # ex: "https://immich.ex
 API_KEY = credentials["upload"]["immich"]["api_key"]              # Bearer token
 ALBUM_ID = credentials["upload"]["immich"]["album_id"]            # Album cible
 TIMEOUT = credentials["general"]["sending_timeout"]                                      # (connexion, lecture)
-AGROCAM_SERVER=credentials["upload"]["agrocam"]["url"]
-AGROCAM_NAME=credentials["upload"]["agrocam"]["name"]
-# Numéro de la broche GPIO à utiliser pour le servo moteur
+AGROCAM_SERVER = credentials["upload"]["agrocam"]["url"]
+AGROCAM_NAME = credentials["upload"]["agrocam"]["name"]
+
+# Numéro de la broche GPIO à utiliser pour le servo moteur principal
 pwm_gpio = 18
+# Numéro de la broche GPIO à utiliser pour le servo de filtre
+filter_pwm_gpio = 19
+
 
 # Numéro de la broche de debogage
 controlPin = 24
+
 
 def initialize_GPIO() :
     print("Initialisation des GPIO...")
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(pwm_gpio, GPIO.OUT)
+    GPIO.setup(filter_pwm_gpio, GPIO.OUT)
     GPIO.setup(controlPin, GPIO.IN)
 
 def angle_to_percent (angle) :
@@ -47,15 +53,44 @@ def angle_to_percent (angle) :
 
     return start + angle_as_percent
 
-def prendre_photo(voltage,extension="png"):
-    now=datetime.now()
+
+def move_servo(pwm_instance, angle):
+    """Déplace un servo à l'angle indiqué (0-180)."""
+    duty = angle_to_percent(angle)
+    if duty is False:
+        raise ValueError(f"Angle servo invalide : {angle}")
+    pwm_instance.ChangeDutyCycle(duty)
+    sleep(0.2)
+    pwm_instance.ChangeDutyCycle(0)
+    sleep(0.1)
+
+def move_step_motor(pin,angle):
+    """
+    Fonction à développer pour intégrer la rotation des filtres et obturateur avec un step motor
+    """
+def prendre_photo(voltage, extension="jpg", tag="",dir_path="/home/pi/Agrocam"):
+    """
+    Prend une photo et enregistre les métadonnées EXIF.
+    
+    :param voltage: Tension de la batterie (peut être None)
+    :param extension: Extension du fichier avec point (ex: ".jpg" ou ".png")
+    """
+    # 🔧 FIX 1: Normaliser l'extension (toujours avec le point)
+    if extension and not extension.startswith('.'):
+        extension = '.' + extension
+    
+    now = datetime.now()
     timestamp_str = now.strftime("%Y-%m-%dT%H-%M-%S")
     timestamp_exif = now.strftime("%Y:%m:%d %H:%M:%S")
-    filepath = f'/home/pi/Agrocam/{timestamp_str}_{voltage}_pending.{extension}'
+    
+    # 🔧 FIX 2: Utiliser voltage "unknown" si None
+    voltage_str = f"{voltage:.2f}" if voltage is not None else "unknown"
+
+    filepath = f'{dir_path}/{timestamp_str}_{voltage_str}_{tag}_pending{extension}'
     
     # 1. La base de la commande
-    cmd = ["rpicam-still", "-o", filepath]
-
+    cmd = ["sudo","rpicam-still", "-o", filepath]
+ 
     # 2. Gestion du timeout et de l'immédiat
     timeout_val = credentials["photo"].get("timeout", 1000) # 1000 par défaut si absent
     
@@ -65,38 +100,47 @@ def prendre_photo(voltage,extension="png"):
         cmd.extend(["-t", "1"]) # On met 1ms car -t 0 bloquerait le script
     else:
         cmd.extend(["-t", str(timeout_val)])
-
+ 
     # 3. Ajout des autres paramètres
     cmd.extend([
         "--width", str(credentials["photo"]["size"]["width"]),
         "--height", str(credentials["photo"]["size"]["height"]),
-        "-q", str(credentials["photo"]["quality"]),
         "--awb", "auto"
     ])
-
-
+    if extension.lower() in [".jpg", ".jpeg"]:
+        cmd.extend(["-q", str(credentials["photo"]["quality"])])
+    if extension.lower() == ".png":
+        cmd.extend(["--encoding", "png"])
+ 
     # Exécution
     print(cmd)
     subprocess.run(cmd)
-        # 3. Ajout de la localisation dans les EXIF
+    subprocess.run(["sudo", "chmod", "777", filepath],capture_output=True,text=True,timeout=5,check=True)
+    
+    # 3. Ajout de la localisation dans les EXIF
     try:
         exif_dict = {"0th": {}, "Exif": {}, "GPS": {}}
-
+ 
         # --- DATE ---
         exif_dict["0th"][piexif.ImageIFD.DateTime] = timestamp_exif.encode('ascii')
         exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = timestamp_exif.encode('ascii')
         exif_dict["Exif"][piexif.ExifIFD.DateTimeDigitized] = timestamp_exif.encode('ascii')
-
+ 
         # --- VOLTAGE ---
-        user_comment = f"BatteryVoltage={voltage:.2f}V"
+        # 🔧 FIX 3: Gérer voltage None dans la création du commentaire EXIF
+        if voltage is not None:
+            user_comment = f"BatteryVoltage={voltage:.2f}V"
+        else:
+            user_comment = "BatteryVoltage=unknown"
+            
         exif_dict["Exif"][piexif.ExifIFD.UserComment] = (
             b"ASCII\x00\x00\x00" + user_comment.encode("ascii")
         )
-
+ 
         # --- GPS ---
-        latitude = float(credentials["photo"]["location"]["latitude"])
-        longitude = float(credentials["photo"]["location"]["longitude"])
-
+        latitude = float(credentials["photo"]["location"]["latitude"]) if credentials["photo"]["location"]["latitude"] else None
+        longitude = float(credentials["photo"]["location"]["longitude"]) if credentials["photo"]["location"]["longitude"] else None
+ 
         if latitude is not None and longitude is not None:
             def to_deg(value):
                 abs_value = abs(value)
@@ -106,16 +150,16 @@ def prendre_photo(voltage,extension="png"):
                 sec_float = (min_float - min_int) * 60
                 # On utilise 10000 pour plus de précision sur les secondes
                 return ((deg, 1), (min_int, 1), (int(sec_float * 10000), 10000))
-
+ 
             lat_ref = "N" if latitude >= 0 else "S"
             lon_ref = "E" if longitude >= 0 else "W"
-
+ 
             # On récupère les tuples (num, den) directement
             lat_deg = to_deg(latitude)
             lon_deg = to_deg(longitude)
-
+ 
             print(f"Enregistrement -> Lat: {lat_deg} {lat_ref}, Lon: {lon_deg} {lon_ref}")
-
+ 
             # Correction ici : on passe directement le résultat de to_deg
             exif_dict["GPS"] = {
                 piexif.GPSIFD.GPSVersionID: (2, 2, 0, 0),
@@ -124,18 +168,39 @@ def prendre_photo(voltage,extension="png"):
                 piexif.GPSIFD.GPSLongitudeRef: lon_ref,
                 piexif.GPSIFD.GPSLongitude: lon_deg,
             }
-
-        exif_bytes = piexif.dump(exif_dict)
-        im = Image.open(filepath)
-        extension_exif = "jpeg" if extension.lower() == "jpg" else extension.lower()
-        im.save(filepath, extension_exif, exif=exif_bytes)
-
-        print(f"[INFO] EXIF ajoutés : GPS + BatteryVoltage={voltage:.2f}V")
-
+ 
+        # 🔧 FIX 4: Utiliser le format réel de l'image, pas l'extension supposée
+        try:
+            exif_bytes = piexif.dump(exif_dict)
+            im = Image.open(filepath)
+            
+            # Récupérer le format réel de l'image
+            actual_format = im.format  # Ex: "JPEG", "PNG"
+            print(f"Format réel de l'image : {actual_format}")
+            if actual_format:
+                # PIL accepte les formats en majuscules ou minuscules
+                save_format = actual_format.lower()
+            else:
+                # Fallback : utiliser l'extension fournie
+                save_format = extension.lstrip('.').lower()
+                if save_format in ["jpg", "jpeg"]:
+                    save_format = "jpeg"
+            
+            im.save(filepath, save_format, exif=exif_bytes)
+ 
+            if voltage is not None:
+                print(f"[INFO] EXIF ajoutés : GPS + BatteryVoltage={voltage:.2f}V")
+            else:
+                print(f"[INFO] EXIF ajoutés : GPS + BatteryVoltage=unknown")
+ 
+        except Exception as e:
+            print(f"[ERROR] Impossible d'ajouter les EXIF : {e}")
+ 
     except Exception as e:
-        print(f"[ERROR] Impossible d'ajouter les EXIF : {e}")
-
+        print(f"[ERROR] Erreur lors du traitement des EXIF : {e}")
+ 
     return filepath
+
 
 def envoyer_http_agrocam(filepath, server_url=AGROCAM_SERVER,metadata_key=AGROCAM_NAME,voltage=None,timeout=10):
     filename = os.path.basename(filepath)
@@ -297,7 +362,7 @@ def get_pending_files(folder):
     files = os.listdir(folder)
     return [os.path.join(folder, f) for f in files if "pending" in f]
 
-def resend_pending_photos(voltage,upload_type):
+def resend_pending_photos(voltage,upload_type,dir_path):
     """Renvoie toutes les photos non envoyées (_pending) si le Wi-Fi est disponible"""
     if not is_connected():
         print("Pas de Wi-Fi, impossible de renvoyer les anciennes photos.")
@@ -305,7 +370,7 @@ def resend_pending_photos(voltage,upload_type):
     
     if voltage is not None:
         if voltage > 8 or voltage < 5:
-            pending_files=get_pending_files("/home/pi/Agrocam")
+            pending_files=get_pending_files(dir_path)
             if not pending_files:
                 print("Aucune photo en attente à renvoyer.")
                 return
@@ -317,7 +382,7 @@ def resend_pending_photos(voltage,upload_type):
                     if upload_type =="agrocam" :
                         envoyer_http_agrocam(filepath)
                     elif upload_type == "immich" :
-                        envoyer_http_immich(filepath)
+                        envoyer_http_immich(filepath,timeout=TIMEOUT)
                     else:
                         print("upload_type inconnu : agrocam ? ou immich ?")
                 except Exception as e:
@@ -330,11 +395,12 @@ def resend_pending_photos(voltage,upload_type):
     
 def set_startup_time(date, hour, minute, second):
     print("Configuration de l'heure de démarrage...")
-    command_set_startup = f"sudo bash -c 'source /home/pi/wittypi/utilities.sh && set_startup_time {date} {hour} {minute} {second}'"    
-    command_net_to_system = subprocess.run(['sudo','bash', '-c', 'source /home/pi/wittypi/utilities.sh && net_to_system'],capture_output=True,text=True)
-    command_system_to_rtc = subprocess.run(['sudo','bash', '-c', 'source /home/pi/wittypi/utilities.sh && system_to_rtc'],capture_output=True,text=True)
+    command_set_startup = f"sudo bash -c 'source /home/pi/wittypi/utilities.sh && set_startup_time {date} {hour} {minute} {second}'"
+
+    subprocess.run(['sudo','bash', '-c', 'source /home/pi/wittypi/utilities.sh && net_to_system'],capture_output=True,text=True)
+    subprocess.run(['sudo','bash', '-c', 'source /home/pi/wittypi/utilities.sh && system_to_rtc'],capture_output=True,text=True)
     subprocess.run(['bash', '-c',command_set_startup ],capture_output=True,text=True)
-    
+
     print(command_set_startup)
 
 def clear_next_startup():
@@ -374,15 +440,34 @@ def calculate_next_startup_time(trigger_times):
 
     return next_startup.day, next_startup.hour, next_startup.minute, next_startup.second
     
+def is_wittypi_connected():
+    """Vérifie si la WittyPi est accessible"""
+    try:
+        result = subprocess.run(
+            ['sudo', 'bash', '-c', 'source /home/pi/wittypi/utilities.sh && get_input_voltage'],
+            capture_output=True,
+            text=True,
+            timeout=1,
+            check=True
+        )
+        # Si on a une tension valide, la WittyPi est connectée
+        voltage = float(result.stdout.strip())
+        print(f"WittyPi détectée, tension d'entrée : {voltage} V")
+        return True
+    except:
+        print("WittyPi non détectée.")
+        return False
+    
 def setup_wittypi():
     pulsing_interval = credentials["witty"]["pulsing_interval"] #13
     white_led_duration=credentials["witty"]["white_led_duration"] #0
     recovery_voltage=credentials["witty"]["recovery_voltage"] #0 for desactivating the recovery voltage
     threshold_voltage=credentials["witty"]["threshold_voltage"] #70 --> 7 volts
-    cmd_pulse = f"""sudo bash -c 'I2C_BUS=1;  source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS $I2C_CONF_PULSE_INTERVAL {credentials["witty"]["pulsing_interval"]}'"""
-    cmd_led = f"""sudo bash -c '  I2C_BUS=1; source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS $I2C_CONF_BLINK_LED {credentials["witty"]["white_led_duration"]}'"""
-    cmd_recovery_voltage=f"""sudo bash -c '  I2C_BUS=1; source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS  $I2C_CONF_RECOVERY_VOLTAGE {credentials["witty"]["recovery_voltage"]}'"""
-    cmd_threshold_voltage = f"""sudo bash -c '  I2C_BUS=1; source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS $I2C_CONF_LOW_VOLTAGE {credentials["witty"]["threshold_voltage"]}'"""
+
+    cmd_pulse = f"""sudo bash -c 'I2C_BUS=1;  source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS $I2C_CONF_PULSE_INTERVAL {pulsing_interval}'"""
+    cmd_led = f"""sudo bash -c '  I2C_BUS=1; source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS $I2C_CONF_BLINK_LED {white_led_duration}'"""
+    cmd_recovery_voltage=f"""sudo bash -c '  I2C_BUS=1; source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS  $I2C_CONF_RECOVERY_VOLTAGE {recovery_voltage}'"""
+    cmd_threshold_voltage = f"""sudo bash -c '  I2C_BUS=1; source /home/pi/wittypi/utilities.sh  && i2c_write $I2C_BUS $I2C_MC_ADDRESS $I2C_CONF_LOW_VOLTAGE {threshold_voltage}'"""
 
     subprocess.run(cmd_led, shell=True, capture_output=True, text=True)
     subprocess.run(cmd_pulse, shell=True, capture_output=True, text=True)
@@ -430,7 +515,7 @@ def get_current_ssid():
         return None
 
 def connect_wifi(target_ssid, password):
-    """Lance l'ordre de connexion sans poser de questions."""
+    """Lance l'ordre de deconnexion puis reconnexion sans poser de questions."""
     # On utilise Popen pour ne pas bloquer le script
     subprocess.run(["sudo","nmcli","con","del",target_ssid],
                    stdout=None,
@@ -439,34 +524,6 @@ def connect_wifi(target_ssid, password):
     subprocess.run(["sudo","nmcli", "device", "wifi", "connect", target_ssid, "password", password],
                    stdout=None,
                    stderr=None)
-
-def connect_wifi_propposition_chatgpt(target_ssid, password):
-    '''
-    Pour éviter l'erreur 
-    Error: 802-11-wireless-security.key-mgmt: property is missing.
-
-    Qui vient du fait que lorsque qu'on essaye de se connecter à un ssid déjà connu, 
-    nmcli réutilise la connexion existante MAIS si cette connexion est :
-    incomplète et/ou corrompue et/ou créée sans sécurité explicite. 
-    Il n’écrase pas les paramètres manquants, d’où key-mgmt missing
-    '''
-    # tentative avec une connexion existante
-    result = subprocess.run(
-        ["nmcli", "con", "up", "id", target_ssid],
-        stdout=None,
-        stderr=None
-    )
-
-    if result.returncode == 0:
-        return  # succès
-
-    # sinon on crée la connexion proprement
-    subprocess.run(["nmcli", "dev", "wifi", "rescan"])
-    subprocess.run(
-        ["nmcli", "dev", "wifi", "connect", target_ssid, "password", password],
-        stdout=None,
-        stderr=None
-    )
 
 def wait_for_wifi(timeout=60):
     target = credentials["wifi"]["ssid"]
@@ -503,31 +560,60 @@ def wait_for_wifi(timeout=60):
     else:
         print(f"Échec : Cible {target} non rejointe après {timeout}s.")
         return False
-    
+
+
 def main():
+    wittypi_connected = is_wittypi_connected()
     try:
-        setup_wittypi()
+        if wittypi_connected:
+            setup_wittypi()
         initialize_GPIO()
-        pwm = GPIO.PWM(pwm_gpio,50) #50 Hz
-        pwm.start(0)
-        voltage = get_voltage()
+        dir_path=setup_storage_path()
+        servo_obturateur = GPIO.PWM(pwm_gpio, 50) # servo obturateur principal
+        servo_filtre = GPIO.PWM(filter_pwm_gpio, 50) # servo filtre
+
+        servo_obturateur.start(0)
+        servo_filtre.start(0)
+
+        if wittypi_connected :
+            voltage = get_voltage()
+        else:
+            voltage = None
         print("Démarrage du script Agrocam...")
-        pwm.ChangeDutyCycle(angle_to_percent(0))
-        sleep(0.2)
-        pwm.ChangeDutyCycle(0)
-        sleep(0.1)
-        filepath = prendre_photo(voltage,extension=credentials["photo"]["format"])
-        print(f"Photo prise : {filepath}")
-        pwm.ChangeDutyCycle(angle_to_percent(90))
-        sleep(0.2)
-        pwm.ChangeDutyCycle(0)
-        sleep(0.1)
-        pwm.stop()
-        wifi_ok = wait_for_wifi(credentials["wifi"]["timeout"])
+
+        # Position initiale du servo principal
+        move_servo(servo_obturateur, 0)
+
+        #double_capture = bool(credentials.get("photo", {}).get("double_capture", False))
+        double_capture = bool(credentials["photo"]["double_capture"])
+        filters = credentials["photo"]["filters"]
+
+        # capture unique ou double selon configuration
+        if double_capture and len(filters) >= 2:
+            for index, step in enumerate(filters, start=1):
+                angle = int(step.get("angle", ))
+                tag = str(step.get("tag", ""))
+
+                move_servo(servo_filtre, angle)
+                filepath = prendre_photo(voltage, extension=credentials["photo"]["format"], tag=tag, dir_path=dir_path)
+                print(f"Photo {index} ({tag}) prise : {filepath}")
         
+            # repos filtre sur le premier angle
+            move_servo(servo_filtre, int(filters[0].get("angle")))
+        else:
+            filepath = prendre_photo(voltage, extension=credentials["photo"]["format"], tag="notag", dir_path=dir_path)
+            print(f"Photo prise : {filepath}")
+
+        move_servo(servo_obturateur, 90)
+
+        servo_obturateur.stop()
+        servo_filtre.stop()
+
+        wifi_ok = wait_for_wifi(credentials["wifi"]["timeout"])
+
         # on n'envoie pas la photo tant que l'agrocam n'a pas de name
-        if credentials["upload"]["type"]=="immich":
-            if credentials["upload"]["immich"]["album_id"]!="":
+        if credentials["upload"]["type"] == "immich":
+            if credentials["upload"]["immich"]["album_id"] != "":
                 if wifi_ok:
                     print("Envoi de la photo et des métadonnées via HTTP...")
                     envoyer_http_immich(filepath,
@@ -536,10 +622,10 @@ def main():
                                 credentials["upload"]["immich"]["album_id"],
                                 voltage,
                                 timeout=TIMEOUT)
-                    resend_pending_photos(voltage,credentials["upload"]["type"])
+                    resend_pending_photos(voltage, credentials["upload"]["type"],dir_path=dir_path)
                 else:
                     print("Envoi annulé (pas de Wi-Fi)")
-            else :
+            else:
                 print("En attente d'un album_id")
         elif credentials["upload"]["type"] == "agrocam":
             if credentials["upload"]["agrocam"]["name"] != "":
@@ -550,43 +636,50 @@ def main():
                                 credentials["upload"]["agrocam"]["name"],
                                 voltage,
                                 timeout=TIMEOUT)
-                    resend_pending_photos(voltage,credentials["upload"]["type"])
+                    resend_pending_photos(voltage, credentials["upload"]["type"],dir_path=dir_path)
                 else:
                     print("Envoi annulé (pas de Wi-Fi)")
-            else :
+            else:
                 print("En attente d'un name d'agrocam")
-
 
     except KeyboardInterrupt:
         pass
 
     finally:
+        try:
+            servo_obturateur.stop()
+            servo_filtre.stop()
+        except Exception:
+            pass
+
         # Configuration WittyPi
-        if voltage >= (credentials["witty"]["threshold_voltage"]/10)+0.5:
-            print("Tension suffisante, programmation du prochain déclenchement")
-            day, hour, minute, second = calculate_next_startup_time(credentials["general"]["trigger_times"])
-            set_startup_time(day, hour, minute, second)
-        elif voltage < 5 :
-            print("Alimentation par USB, programmation du prochain déclenchement")
-            day, hour, minute, second = calculate_next_startup_time(credentials["general"]["trigger_times"])
-            set_startup_time(day, hour, minute, second)
-        else :
-            print("Tension insuffisante, pas de reprogrammation")
-            clear_next_startup()
-            
+        if wittypi_connected:
+            if voltage is not None:
+                if voltage >= (credentials["witty"]["threshold_voltage"]/10) + 0.5:
+                    print("Tension suffisante, programmation du prochain déclenchement")
+                    day, hour, minute, second = calculate_next_startup_time(credentials["general"]["trigger_times"])
+                    set_startup_time(day, hour, minute, second)
+                elif voltage < 5:
+                    print("Alimentation par USB, programmation du prochain déclenchement")
+                    day, hour, minute, second = calculate_next_startup_time(credentials["general"]["trigger_times"])
+                    set_startup_time(day, hour, minute, second)
+                else:
+                    print("Tension insuffisante, pas de reprogrammation")
+                    clear_next_startup()
+            else :
+                print("Impossible de lire la tension, programmation du prochain déclenchement par précaution")
+                day, hour, minute, second = calculate_next_startup_time(credentials["general"]["trigger_times"])
+                set_startup_time(day, hour, minute, second)
+
         # Mode Maintenance
         if GPIO.input(controlPin) == 1:
             print("Mode maintenance activé. Lancement de l'interface Flask...")
-            # On lance Flask en arrière-plan
             subprocess.run(['sudo', 'systemctl', 'start', 'agrocam-flask.service'])
-            
-            # On attend que l'utilisateur relâche le bouton/switch
             while GPIO.input(controlPin) == 1:
                 print("... En attente de la fin de maintenance ...")
-                sleep(10) # 10s suffit largement et sollicite moins le CPU
-            
+                sleep(10)
             print("Mode maintenance terminé.")
-        # Extinction finale
+
         subprocess.run(['sudo', 'systemctl', 'stop', 'agrocam-flask.service'])
         print("Extinction du système...")
         GPIO.cleanup()
