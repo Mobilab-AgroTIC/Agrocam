@@ -88,6 +88,12 @@ sudo systemctl enable agrocam.service
 sudo systemctl disable agrocam-flask.service
 ```
 
+Créer la connexion Hotspot persistante avec un SSID temporaire
+```sudo nmcli con add type wifi ifname wlan0 con-name Hotspot autoconnect no ssid Agrocam-init```
+
+Configurer le mode AP et le partage réseau
+```sudo nmcli connection modify Hotspot 802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared```
+
 # 6. Installation wittyPi
 ```
 wget http://www.uugear.com/repo/WittyPi4/install.sh
@@ -115,9 +121,8 @@ sudo systemctl disable --now fstrim.timer
 ** Amélioration possibles **
 ```sudo nano /boot/firmware/config.txt```
 Ajouter ceci
-\# Désactive le Bluetooth et le Wifi intégré (si vous utilisez un dongle 4G)
+\# Désactive le Bluetooth
 dtoverlay=disable-bt
-\# dtoverlay=disable-wifi # Ne l'activez que si le dongle 4G suffit
 \# Désactive l'HDMI (gain de conso et de temps)
 hdmi_blanking=2
 
@@ -135,7 +140,11 @@ Une fois l'Agrocam redémarrée plusieurs comportement sont possible en fonction
 # 8. Dernière petites étapes avant extinction
 Pour eviter d'embarquer trop de trace de notre intervention. vous pouvez faire les étapes suivantes
 Videz le cache APT : ```sudo apt clean```
-Supprimez l'historique bash : ```sudo cat /dev/null > ~/.bash_history```
+Supprimez l'historique bash : 
+
+```sudo cat /dev/null > ~/.bash_history```
+
+```history -c```
 
 
 Eteignez le raspberry avec
@@ -164,11 +173,11 @@ chmod +x pishrink.sh
 ```
 Pour le rendre activable
 ```
-sudo ./pishrink.sh /C:/Mon/Chemin/vers/agrocam.img
+sudo ./pishrink.sh /mnt/c/Mon/Chemin/vers/agrocam.img
 ```
 Puis compression de l'image :
 ```
-xz -vk /C:/Mon/Chemin/vers/agrocam.img
+xz -vk /mnt/c/Mon/Chemin/vers/agrocam.img
 ```
 
 

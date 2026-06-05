@@ -13,6 +13,7 @@ import piexif
 from PIL import Image
 from usb_storage import setup_storage_path
 from wittypi import set_startup_time,clear_next_startup,calculate_next_startup_time,is_wittypi_connected,setup_wittypi, get_voltage
+from servo import ServoManager, move_servo
 CREDENTIALS_FILE = "credentials.json"
 
 with open(CREDENTIALS_FILE, "r") as f:
@@ -28,9 +29,9 @@ AGROCAM_NAME = credentials["upload"]["agrocam"]["name"]
 DEBUG_MODE=credentials["general"]["debug_mode"]
 
 # Numéro de la broche GPIO à utiliser pour le servo moteur principal
-pwm_gpio = 18
+pwm_gpio = credentials["servo"]["gpio_shutter"]
 # Numéro de la broche GPIO à utiliser pour le servo de filtre
-filter_pwm_gpio = 19
+filter_pwm_gpio =  credentials["servo"]["gpio_filter"]
 
 # Jumper de mode : HIGH (jumper branché sur 3.3V) = config, LOW (absent) = normal
 controlPin = 24
@@ -44,30 +45,6 @@ def initialize_GPIO():
     # PUD_DOWN : sans jumper la broche est fermement à LOW → mode normal garanti
     GPIO.setup(controlPin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-def angle_to_percent(angle):
-    if angle > 180 or angle < 0:
-        return False
-    start = 4
-    end = 12.5
-    ratio = (end - start) / 180
-    angle_as_percent = angle * ratio
-    return start + angle_as_percent
-
-
-def move_servo(pwm_instance, angle):
-    """Déplace un servo à l'angle indiqué (0-180)."""
-    duty = angle_to_percent(angle)
-    if duty is False:
-        raise ValueError(f"Angle servo invalide : {angle}")
-    pwm_instance.ChangeDutyCycle(duty)
-    sleep(0.2)
-    pwm_instance.ChangeDutyCycle(0)
-    sleep(0.1)
-
-def move_step_motor(pin, angle):
-    """
-    Fonction à développer pour intégrer la rotation des filtres et obturateur avec un step motor
-    """
 
 def prendre_photo(voltage, extension="jpg", tag="", dir_path="/home/pi/Agrocam"):
     """
@@ -422,21 +399,24 @@ def get_serial_suffix():
     return "0000"
 
 def start_hotspot():
-    """
-    Crée un point d'accès WiFi via nmcli.
-    NetworkManager gère le DHCP automatiquement (IP du Pi : 10.42.0.1).
-    """
     ssid = f"Agrocam-{get_serial_suffix()}"
     password = "agrocam123"
-    print(f"[CONFIG] Création du hotspot : SSID={ssid}  Password={password}")
+    print(f"[CONFIG] Création du hotspot : SSID={ssid}")
+
+    # Mise à jour dynamique du SSID
+    subprocess.run(
+        ["sudo", "nmcli", "connection", "modify", "Hotspot",
+         "802-11-wireless.ssid", ssid],
+        capture_output=True, text=True, timeout=5
+    )
+
     result = subprocess.run(
-        ["sudo", "nmcli", "device", "wifi", "hotspot",
-         "ifname", "wlan0", "ssid", ssid, "password", password],
+        ["sudo", "nmcli", "con", "up", "Hotspot"],
         capture_output=True, text=True, timeout=15
     )
     if result.returncode == 0:
         print(f"[CONFIG] ✅ Hotspot actif")
-        print(f"[CONFIG]    → Connectez-vous à '{ssid}'")
+        print(f"[CONFIG]    → Connectez-vous à '{ssid}' (pas de mot de passe)")
         print(f"[CONFIG]    → Ouvrez http://10.42.0.1:5000")
         return True
     else:
@@ -503,42 +483,40 @@ def main():
     try:
         if wittypi_connected:
             setup_wittypi()
-        initialize_GPIO()
+        #initialize_GPIO()
         dir_path = setup_storage_path()
 
-        servo_obturateur = GPIO.PWM(pwm_gpio, 50)
-        servo_filtre = GPIO.PWM(filter_pwm_gpio, 50)
+        with ServoManager(pwm_gpio, filter_pwm_gpio) as servo:
+            move_servo(servo.shutter, 0)
+            move_servo(servo.filter, 0)
 
-        servo_obturateur.start(0)
-        servo_filtre.start(0)
+            if wittypi_connected:
+                voltage = get_voltage()
+            print("Démarrage du script Agrocam...")
 
-        if wittypi_connected:
-            voltage = get_voltage()
-        print("Démarrage du script Agrocam...")
+            move_servo(servo.shutter, 0)
 
-        move_servo(servo_obturateur, 0)
+            double_capture = bool(credentials["photo"]["double_capture"])
+            filters = credentials["photo"]["filters"]
 
-        double_capture = bool(credentials["photo"]["double_capture"])
-        filters = credentials["photo"]["filters"]
+            if double_capture and len(filters) >= 2:
+                for index, step in enumerate(filters, start=1):
+                    angle = int(step.get("angle",))
+                    tag = str(step.get("tag", ""))
 
-        if double_capture and len(filters) >= 2:
-            for index, step in enumerate(filters, start=1):
-                angle = int(step.get("angle",))
-                tag = str(step.get("tag", ""))
+                    move_servo(servo.filter, angle)
+                    filepath = prendre_photo(voltage, extension=credentials["photo"]["format"], tag=tag, dir_path=dir_path)
+                    print(f"Photo {index} ({tag}) prise : {filepath}")
 
-                move_servo(servo_filtre, angle)
-                filepath = prendre_photo(voltage, extension=credentials["photo"]["format"], tag=tag, dir_path=dir_path)
-                print(f"Photo {index} ({tag}) prise : {filepath}")
+                move_servo(servo.filter, int(filters[0].get("angle")))
+            else:
+                filepath = prendre_photo(voltage, extension=credentials["photo"]["format"], tag="notag", dir_path=dir_path)
+                print(f"Photo prise : {filepath}")
 
-            move_servo(servo_filtre, int(filters[0].get("angle")))
-        else:
-            filepath = prendre_photo(voltage, extension=credentials["photo"]["format"], tag="notag", dir_path=dir_path)
-            print(f"Photo prise : {filepath}")
+            move_servo(servo.shutter, 90)
 
-        move_servo(servo_obturateur, 90)
-
-        servo_obturateur.stop()
-        servo_filtre.stop()
+            #servo.shutter.stop()
+            #servo.filter.stop()
 
         wifi_ok = wait_for_wifi(credentials["wifi"]["timeout"])
 
