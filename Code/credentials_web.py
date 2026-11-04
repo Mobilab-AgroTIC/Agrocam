@@ -32,18 +32,128 @@ preview_process = None
 
 HTML_FORM = """
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Configuration Agrocam</title>
+    <!-- Tout le style reste dans la page : le hotspot n'a pas forcément accès à Internet -->
     <style>
-        body { font-family: sans-serif; max-width: 700px; margin: auto; padding: 20px; }
-        label { font-weight: bold; display: block; margin-top: 10px; }
-        input, select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
-        .section { border-top: 1px solid #ccc; margin-top: 20px; padding-top: 10px; }
-        .ok { color: white; background: green; padding: 10px; }
-        .err { color: white; background: red; padding: 10px; }
-        .btn-save { background: #007bff; color: white; font-weight: bold; cursor: pointer; border: none; padding: 10px; margin-top: 20px; }
-        #clock-status { font-size: 0.85em; color: gray; margin: 4px 0 0 0; }
+        :root {
+            color-scheme: light dark;
+            --bg: #f3f6f4;
+            --surface: #ffffff;
+            --text: #1b2420;
+            --muted: #5c6863;
+            --border: #d5ddd8;
+            --accent: #1f7a4d;
+            --accent-hover: #18643f;
+            --on-accent: #ffffff;
+            --ok: #1a7a48;
+            --warn: #9a5700;
+            --err: #c02626;
+            --shadow: 0 1px 3px rgba(20, 40, 30, 0.1);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #121715;
+                --surface: #1c2320;
+                --text: #e8eeeb;
+                --muted: #a0ada7;
+                --border: #36423c;
+                --accent: #2f9e68;
+                --accent-hover: #3bb378;
+                --on-accent: #06140d;
+                --ok: #5fd39a;
+                --warn: #e8b05a;
+                --err: #ff8a80;
+                --shadow: none;
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 16px 12px calc(24px + env(safe-area-inset-bottom));
+            background: var(--bg);
+            color: var(--text);
+            font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-text-size-adjust: 100%;
+        }
+        h1 { font-size: 1.5rem; line-height: 1.25; margin: 4px 4px 0; }
+        h2 { font-size: 1.1rem; margin: 0 0 8px; }
+        h3 { font-size: 1rem; margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--border); }
+        label { display: block; font-size: 0.9rem; font-weight: 600; margin: 14px 0 6px; }
+        input:not([type="submit"]), select {
+            display: block;
+            width: 100%;
+            min-height: 46px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface);
+            color: var(--text);
+            font: inherit;  /* 16px minimum : évite le zoom automatique sur iPhone */
+        }
+        input:focus-visible, select:focus-visible, .btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .section {
+            margin-top: 12px;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+        }
+        .field-row { display: grid; grid-template-columns: 1fr; column-gap: 12px; }
+        .hint { font-size: 0.85rem; color: var(--muted); margin: 8px 0; }
+        .status { font-size: 0.9rem; color: var(--muted); margin: 8px 0 0; overflow-wrap: anywhere; }
+        .status:empty { display: none; }
+        .status ul { padding-left: 20px; }
+        #clock-status { margin: 2px 4px 0; }
+        #camera-preview { width: 100%; margin-top: 12px; border-radius: 10px; }
+        .btn {
+            display: block;
+            width: 100%;
+            min-height: 48px;
+            padding: 10px 18px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .btn:disabled { opacity: 0.6; cursor: wait; }
+        .btn-primary { background: var(--accent); color: var(--on-accent); }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: transparent; color: var(--accent); border-color: var(--accent); margin-top: 16px; }
+        .btn-secondary:hover { background: var(--bg); }
+        .btn-danger { background: transparent; color: var(--err); border-color: var(--err); margin-top: 16px; }
+        .btn-danger:hover { background: var(--bg); }
+        .section > .btn-secondary:first-of-type { margin-top: 4px; }
+        /* Le bouton d'enregistrement reste visible pendant le défilement du formulaire */
+        .save-bar {
+            position: sticky;
+            bottom: 0;
+            margin: 12px -12px 0;
+            padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+            background: var(--bg);
+            border-top: 1px solid var(--border);
+        }
+        .ok, .err { margin: 12px 0 0; padding: 12px 14px; border-radius: 10px; color: #ffffff; font-weight: 600; }
+        .ok { background: #1a7a48; }
+        .err { background: #c02626; }
+        @media (min-width: 560px) {
+            body { padding-top: 28px; padding-left: 20px; padding-right: 20px; }
+            .section { padding: 20px; }
+            .field-row { grid-template-columns: 1fr 1fr; }
+            .btn-secondary, .btn-danger { width: auto; }
+            .save-bar { margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; }
+        }
     </style>
 </head>
 
@@ -72,10 +182,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const el = document.getElementById("clock-status");
         if (data.status === "ok") {
             el.textContent = "✅ Heure synchronisée : " + iso;
-            el.style.color = "green";
+            el.style.color = "var(--ok)";
         } else {
             el.textContent = "⚠️ Synchronisation de l'heure échouée";
-            el.style.color = "orange";
+            el.style.color = "var(--warn)";
         }
     })
     .catch(() => {
@@ -116,21 +226,21 @@ function updateDongleStatus() {
         .then(data => {
             if (!data.detected) {
                 el.textContent = "⚪ Clé 4G non détectée en USB";
-                el.style.color = "gray";
+                el.style.color = "var(--muted)";
             } else if (!data.readable) {
                 el.textContent = "⚠️ Clé 4G détectée, état illisible";
-                el.style.color = "orange";
+                el.style.color = "var(--warn)";
             } else if (data.connected) {
                 el.textContent = "✅ 4G connectée : " + data.operator + ", " + data.network + ", signal " + data.signal + "/5";
-                el.style.color = "green";
+                el.style.color = "var(--ok)";
             } else {
                 el.textContent = "❌ Clé 4G détectée, réseau 4G non connecté (signal " + data.signal + "/5)";
-                el.style.color = "red";
+                el.style.color = "var(--err)";
             }
         })
         .catch(() => {
             el.textContent = "❌ Erreur de connexion";
-            el.style.color = "red";
+            el.style.color = "var(--err)";
         });
 }
 
@@ -166,7 +276,7 @@ function testUpload() {
     }
 
     btn.disabled = true;
-    showTestUploadResult("Prise de la photo et envoi en cours...", "gray");
+    showTestUploadResult("Prise de la photo et envoi en cours...", "var(--muted)");
     fetch("/test_upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -180,15 +290,15 @@ function testUpload() {
     .then(r => r.json())
     .then(data => {
         if (data.status === "ok") {
-            showTestUploadResult("✅ Photo envoyée et ajoutée à l'album", "green");
+            showTestUploadResult("✅ Photo envoyée et ajoutée à l'album", "var(--ok)");
         } else if (data.status === "partial") {
-            showTestUploadResult("⚠️ Photo envoyée, mais avec des erreurs :", "orange", data.messages);
+            showTestUploadResult("⚠️ Photo envoyée, mais avec des erreurs :", "var(--warn)", data.messages);
         } else {
-            showTestUploadResult("❌ Envoi impossible :", "red", data.messages);
+            showTestUploadResult("❌ Envoi impossible :", "var(--err)", data.messages);
         }
     })
     .catch(() => {
-        showTestUploadResult("❌ Erreur de connexion avec l'Agrocam", "red");
+        showTestUploadResult("❌ Erreur de connexion avec l'Agrocam", "var(--err)");
     })
     .finally(() => {
         btn.disabled = false;
@@ -217,27 +327,27 @@ function togglePreview() {
             .then(data => {
                 if (data.status !== "ok") {
                     el.textContent = "❌ Erreur : " + data.message;
-                    el.style.color = "red";
+                    el.style.color = "var(--err)";
                 }
             })
             .catch(() => {
                 el.textContent = "❌ Erreur de connexion";
-                el.style.color = "red";
+                el.style.color = "var(--err)";
             });
         return;
     }
 
     el.textContent = "Démarrage de la caméra...";
-    el.style.color = "gray";
+    el.style.color = "var(--muted)";
     btn.textContent = "Arrêter l'aperçu";
     img.onload = () => {
         el.textContent = "✅ Aperçu en direct, obturateur ouvert";
-        el.style.color = "green";
+        el.style.color = "var(--ok)";
     };
     img.onerror = () => {
         hidePreview();
         el.textContent = "❌ Impossible d'afficher le flux de la caméra";
-        el.style.color = "red";
+        el.style.color = "var(--err)";
     };
     img.src = "/camera_stream?t=" + Date.now();
     img.style.display = "block";
@@ -248,7 +358,7 @@ function togglePreview() {
 <body>
 
 <h1>Configuration Agrocam</h1>
-<p id="clock-status">Synchronisation de l'heure...</p>
+<p id="clock-status" class="status">Synchronisation de l'heure...</p>
 
 {% if message %}
 <p class="ok">{{ message }}</p>
@@ -257,18 +367,16 @@ function togglePreview() {
 <p class="err">{{ error }}</p>
 {% endif %}
 
-<hr>
-
 <div class="section">
     <h2>Connexion 4G</h2>
-    <p id="dongle-status" style="color:gray;margin:4px 0;">Lecture de l'état de la clé 4G...</p>
+    <p id="dongle-status" class="status">Lecture de l'état de la clé 4G...</p>
 </div>
 
 <div class="section">
     <h2>Aperçu caméra</h2>
-    <button type="button" id="camera-button" onclick="togglePreview()" style="background:#2e8b57;color:white;font-weight:bold;padding:10px;border:none;cursor:pointer;">Démarrer l'aperçu</button>
-    <p id="camera-status" style="font-size:0.85em;color:gray;margin:4px 0;"></p>
-    <img id="camera-preview" alt="Aperçu de la caméra" style="display:none;width:100%;margin-top:10px;">
+    <button type="button" id="camera-button" class="btn btn-secondary" onclick="togglePreview()">Démarrer l'aperçu</button>
+    <p id="camera-status" class="status"></p>
+    <img id="camera-preview" alt="Aperçu de la caméra" style="display:none;">
 </div>
 
 
@@ -317,9 +425,9 @@ function togglePreview() {
             <label>Album ID</label>
             <input name="immich_album_id" value="{{ c.upload.immich.album_id }}">
 
-            <button type="button" id="test-upload-button" onclick="testUpload()" style="background:#2e8b57;color:white;font-weight:bold;padding:10px;border:none;cursor:pointer;">Tester l'envoi d'une photo</button>
-            <p style="font-size:0.85em;color:gray;margin:4px 0;">Envoie une vraie photo vers l'album avec les champs ci-dessus, même non enregistrés. Les réglages de la section Photo doivent être enregistrés pour être pris en compte.</p>
-            <div id="test-upload-status" style="font-size:0.85em;margin:4px 0;overflow-wrap:anywhere;"></div>
+            <button type="button" id="test-upload-button" class="btn btn-secondary" onclick="testUpload()">Tester l'envoi d'une photo</button>
+            <p class="hint">Envoie une vraie photo vers l'album avec les champs ci-dessus, même non enregistrés. Les réglages de la section Photo doivent être enregistrés pour être pris en compte.</p>
+            <div id="test-upload-status" class="status"></div>
         </div>
     </div>
 
@@ -338,7 +446,7 @@ function togglePreview() {
     <div class="section">
         <h2>Photo</h2>
         <label>Format</label>
-        <p>Le format JPEG est recommandé pour réduire la taille des fichiers, mais le PNG peut être utilisé si vous souhaitez une qualité maximale sans compression.</p>
+        <p class="hint">Le format JPEG est recommandé pour réduire la taille des fichiers, mais le PNG peut être utilisé si vous souhaitez une qualité maximale sans compression.</p>
         <select name="photo_format" id="photo_format" onchange="updateFormatFields()">
             <option value="jpg" {% if c.photo.format == "jpg" %}selected{% endif %}>JPEG (compressé)</option>
             <option value="png" {% if c.photo.format == "png" %}selected{% endif %}>PNG (non compressé)</option>
@@ -348,16 +456,27 @@ function togglePreview() {
             <input type="number" name="photo_quality" value="{{ c.photo.quality }}" min="10" max="100">
         </div>
 
-        <label>Latitude (optionnel)</label>
-        <input type="text" name="photo_latitude" value="{{ c.photo.location.latitude }}">
-        <label>Longitude (optionnel)</label>
-        <input type="text" name="photo_longitude" value="{{ c.photo.location.longitude }}">
+        <div class="field-row">
+            <div>
+                <label>Latitude (optionnel)</label>
+                <input type="text" name="photo_latitude" value="{{ c.photo.location.latitude }}">
+            </div>
+            <div>
+                <label>Longitude (optionnel)</label>
+                <input type="text" name="photo_longitude" value="{{ c.photo.location.longitude }}">
+            </div>
+        </div>
 
-        <label>Largeur (max 4608)</label>
-        <input type="number" name="photo_width" value="{{ c.photo.size.width }}" min="1" max="4608">
-
-        <label>Hauteur (max 2592)</label>
-        <input type="number" name="photo_height" value="{{ c.photo.size.height }}" min="1" max="2592">
+        <div class="field-row">
+            <div>
+                <label>Largeur (max 4608)</label>
+                <input type="number" name="photo_width" value="{{ c.photo.size.width }}" min="1" max="4608">
+            </div>
+            <div>
+                <label>Hauteur (max 2592)</label>
+                <input type="number" name="photo_height" value="{{ c.photo.size.height }}" min="1" max="2592">
+            </div>
+        </div>
 
         <label>Timeout Photo (ms)</label>
         <input type="number" name="photo_timeout" value="{{ c.photo.timeout }}" min="0">
@@ -373,24 +492,38 @@ function togglePreview() {
 
         <div id="filter_fields">
             <h3>Filtre 1</h3>
-            <label>Tag filtre 1</label>
-            <input name="filter1_tag" value="{{ c.photo.filters[0].tag if c.photo.filters|length > 0 else 'nofilter' }}">
-            <label>Angle filtre 1</label>
-            <input type="number" name="filter1_angle" value="{{ c.photo.filters[0].angle if c.photo.filters|length > 0 else 0 }}" min="0" max="180">
+            <div class="field-row">
+                <div>
+                    <label>Tag filtre 1</label>
+                    <input name="filter1_tag" value="{{ c.photo.filters[0].tag if c.photo.filters|length > 0 else 'nofilter' }}">
+                </div>
+                <div>
+                    <label>Angle filtre 1</label>
+                    <input type="number" name="filter1_angle" value="{{ c.photo.filters[0].angle if c.photo.filters|length > 0 else 0 }}" min="0" max="180">
+                </div>
+            </div>
 
             <h3>Filtre 2</h3>
-            <label>Tag filtre 2</label>
-            <input name="filter2_tag" value="{{ c.photo.filters[1].tag if c.photo.filters|length > 1 else 'filter' }}">
-            <label>Angle filtre 2</label>
-            <input type="number" name="filter2_angle" value="{{ c.photo.filters[1].angle if c.photo.filters|length > 1 else 90 }}" min="0" max="180">
+            <div class="field-row">
+                <div>
+                    <label>Tag filtre 2</label>
+                    <input name="filter2_tag" value="{{ c.photo.filters[1].tag if c.photo.filters|length > 1 else 'filter' }}">
+                </div>
+                <div>
+                    <label>Angle filtre 2</label>
+                    <input type="number" name="filter2_angle" value="{{ c.photo.filters[1].angle if c.photo.filters|length > 1 else 90 }}" min="0" max="180">
+                </div>
+            </div>
         </div>
     </div>
 
-    <input type="submit" class="btn-save" value="Enregistrer les modifications">
+    <div class="save-bar">
+        <input type="submit" class="btn btn-primary" value="Enregistrer les modifications">
+    </div>
 </form>
 
 <form method="POST" action="/shutdown" onsubmit="return confirm('Éteindre le système ?');">
-    <input type="submit" value="Shutdown" style="background:#c00;color:white;font-weight:bold;width:auto;">
+    <input type="submit" class="btn btn-danger" value="Shutdown">
 </form>
 
 
