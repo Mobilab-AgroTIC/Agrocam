@@ -1,14 +1,26 @@
 #!/usr/bin/env python3
-from flask import Flask, request, render_template_string
+from flask import Flask, Response, request, render_template_string
 import json
 import os
 import re
 import subprocess
+import threading
 from wittypi import set_startup_time, calculate_next_startup_time, setup_wittypi
-from servo import hello_world_servo, ServoManager
+from servo import move_servo, ServoManager
 CREDENTIALS_FILE = "/home/pi/credentials.json"
 
+# Angles de l'obturateur, identiques à ceux utilisés par agrocam.py
+SHUTTER_OPEN_ANGLE = 0
+SHUTTER_CLOSED_ANGLE = 90
+
+PREVIEW_WIDTH = 640
+PREVIEW_FRAMERATE = 10
+
 app = Flask(__name__)
+
+# La caméra n'accepte qu'un seul processus à la fois : un nouveau flux remplace le précédent
+preview_lock = threading.Lock()
+preview_process = None
 
 
 HTML_FORM = """
@@ -89,20 +101,53 @@ document.addEventListener("DOMContentLoaded", updateUploadFields);
 document.addEventListener("DOMContentLoaded", updateFilterFields);
 document.addEventListener("DOMContentLoaded", updateFormatFields);
 
-function testServo() {
-    const el = document.getElementById("servo-status");
-    el.textContent = "Activation en cours...";
+
+// ── Aperçu caméra ─────────────────────────────────────────────────────────────
+function togglePreview() {
+    const img = document.getElementById("camera-preview");
+    const btn = document.getElementById("camera-button");
+    const el = document.getElementById("camera-status");
+
+    function hidePreview() {
+        img.onload = null;
+        img.onerror = null;
+        img.removeAttribute("src");
+        img.style.display = "none";
+        btn.textContent = "Démarrer l'aperçu";
+    }
+
+    if (img.hasAttribute("src")) {
+        hidePreview();
+        el.textContent = "";
+        fetch("/camera_stop", { method: "POST" })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status !== "ok") {
+                    el.textContent = "❌ Erreur : " + data.message;
+                    el.style.color = "red";
+                }
+            })
+            .catch(() => {
+                el.textContent = "❌ Erreur de connexion";
+                el.style.color = "red";
+            });
+        return;
+    }
+
+    el.textContent = "Démarrage de la caméra...";
     el.style.color = "gray";
-    fetch("/test_servo", { method: "POST" })
-        .then(r => r.json())
-        .then(data => {
-            el.textContent = data.status === "ok" ? "✅ Servo activé" : "❌ Erreur : " + data.message;
-            el.style.color = data.status === "ok" ? "green" : "red";
-        })
-        .catch(() => {
-            el.textContent = "❌ Erreur de connexion";
-            el.style.color = "red";
-        });
+    btn.textContent = "Arrêter l'aperçu";
+    img.onload = () => {
+        el.textContent = "✅ Aperçu en direct, obturateur ouvert";
+        el.style.color = "green";
+    };
+    img.onerror = () => {
+        hidePreview();
+        el.textContent = "❌ Impossible d'afficher le flux de la caméra";
+        el.style.color = "red";
+    };
+    img.src = "/camera_stream?t=" + Date.now();
+    img.style.display = "block";
 }
 
 </script>
@@ -121,8 +166,12 @@ function testServo() {
 
 <hr>
 
-<button type="button" onclick="testServo()" style="background:#8b7ad6;color:black;font-weight:bold;padding:10px;border:none;cursor:pointer;">Test Servo</button>
-<p id="servo-status" style="font-size:0.85em;color:gray;margin:4px 0;"></p>
+<div class="section">
+    <h2>Aperçu caméra</h2>
+    <button type="button" id="camera-button" onclick="togglePreview()" style="background:#2e8b57;color:white;font-weight:bold;padding:10px;border:none;cursor:pointer;">Démarrer l'aperçu</button>
+    <p id="camera-status" style="font-size:0.85em;color:gray;margin:4px 0;"></p>
+    <img id="camera-preview" alt="Aperçu de la caméra" style="display:none;width:100%;margin-top:10px;">
+</div>
 
 
 <form method="POST">
@@ -259,6 +308,75 @@ def save_credentials(data):
 
 def valid_time(t):
     return re.match(r"^\d{2}:\d{2}:\d{2}$", t) is not None
+
+def move_shutter(angle):
+    creds = load_credentials()
+    with ServoManager(creds["servo"]["gpio_shutter"], creds["servo"]["gpio_filter"]) as servo:
+        move_servo(servo.shutter, angle)
+
+def terminate_process(process):
+    process.terminate()
+    try:
+        process.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+
+def start_preview():
+    """Ouvre l'obturateur et lance la capture MJPEG, en remplaçant le flux en cours s'il existe."""
+    global preview_process
+    with preview_lock:
+        if preview_process is not None:
+            terminate_process(preview_process)
+            preview_process = None
+
+        # Même cadrage que les photos : la hauteur suit le ratio configuré (valeur paire)
+        size = load_credentials()["photo"]["size"]
+        height = round(PREVIEW_WIDTH * size["height"] / size["width"] / 2) * 2
+
+        move_shutter(SHUTTER_OPEN_ANGLE)
+        preview_process = subprocess.Popen(
+            ["rpicam-vid", "-t", "0", "--nopreview", "--codec", "mjpeg", "--flush",
+             "--width", str(PREVIEW_WIDTH), "--height", str(height),
+             "--framerate", str(PREVIEW_FRAMERATE), "--verbose", "0", "-o", "-"],
+            stdout=subprocess.PIPE
+        )
+        return preview_process
+
+def stop_preview(owner=None):
+    """
+    Arrête le flux et referme l'obturateur. Si owner est fourni, ne fait rien
+    lorsqu'un flux plus récent a pris le relais de ce processus.
+    """
+    global preview_process
+    with preview_lock:
+        if preview_process is None or (owner is not None and preview_process is not owner):
+            return
+        terminate_process(preview_process)
+        preview_process = None
+        move_shutter(SHUTTER_CLOSED_ANGLE)
+
+def generate_frames(process):
+    """
+    Découpe la sortie de rpicam-vid en images JPEG pour un flux multipart.
+    Le finally libère la caméra dès que le navigateur ferme le flux (page quittée
+    ou rechargée) : call_on_close n'est pas fiable, Werkzeug peut lever une
+    exception sur une connexion coupée avant d'appeler close().
+    """
+    buffer = b""
+    try:
+        while True:
+            chunk = process.stdout.read1(65536)
+            if not chunk:
+                return
+            buffer += chunk
+            end = buffer.find(b"\xff\xd9")
+            while end != -1:
+                frame, buffer = buffer[:end + 2], buffer[end + 2:]
+                yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+                end = buffer.find(b"\xff\xd9")
+    finally:
+        stop_preview(process)
 
 # ---------- Routes ----------
 
@@ -406,13 +524,22 @@ def shutdown():
     subprocess.Popen(["sudo", "shutdown", "-h", "now"])
     return "<h1>Arrêt du système en cours...</h1>"
 
-@app.route("/test_servo", methods=["POST"])
-def servo():
+@app.route("/camera_stream")
+def camera_stream():
     try:
-        creds = load_credentials()
-        with ServoManager(creds["servo"]["gpio_shutter"], creds["servo"]["gpio_filter"]) as servo:
-            hello_world_servo(servo.shutter)
-            hello_world_servo(servo.filter)
+        process = start_preview()
+    except Exception as e:
+        print(f"[CAMERA] Erreur : {e}", file=__import__('sys').stderr)
+        return {"status": "error", "message": str(e)}, 500
+
+    response = Response(generate_frames(process), mimetype="multipart/x-mixed-replace; boundary=frame")
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+@app.route("/camera_stop", methods=["POST"])
+def camera_stop():
+    try:
+        stop_preview()
         return {"status": "ok"}
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
