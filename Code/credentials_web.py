@@ -5,6 +5,7 @@ import os
 import re
 import requests
 import subprocess
+import tempfile
 import threading
 from wittypi import set_startup_time, calculate_next_startup_time, setup_wittypi
 from servo import move_servo, ServoManager
@@ -138,6 +139,62 @@ document.addEventListener("DOMContentLoaded", function () {
     setInterval(updateDongleStatus, 10000);
 });
 
+// ── Test d'envoi d'une photo ──────────────────────────────────────────────────
+function showTestUploadResult(title, color, messages) {
+    const el = document.getElementById("test-upload-status");
+    el.textContent = title;
+    el.style.color = color;
+    if (messages && messages.length > 0) {
+        const list = document.createElement("ul");
+        list.style.margin = "4px 0";
+        messages.forEach(message => {
+            const item = document.createElement("li");
+            item.textContent = message;
+            list.appendChild(item);
+        });
+        el.appendChild(list);
+    }
+}
+
+function testUpload() {
+    const btn = document.getElementById("test-upload-button");
+    const fieldValue = name => document.querySelector('[name="' + name + '"]').value;
+
+    // L'aperçu occupe la caméra : on l'arrête proprement avant la photo
+    if (document.getElementById("camera-preview").hasAttribute("src")) {
+        togglePreview();
+    }
+
+    btn.disabled = true;
+    showTestUploadResult("Prise de la photo et envoi en cours...", "gray");
+    fetch("/test_upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            url: fieldValue("immich_url"),
+            api_key: fieldValue("immich_api_key"),
+            album_id: fieldValue("immich_album_id"),
+            timeout: fieldValue("sending_timeout")
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === "ok") {
+            showTestUploadResult("✅ Photo envoyée et ajoutée à l'album", "green");
+        } else if (data.status === "partial") {
+            showTestUploadResult("⚠️ Photo envoyée, mais avec des erreurs :", "orange", data.messages);
+        } else {
+            showTestUploadResult("❌ Envoi impossible :", "red", data.messages);
+        }
+    })
+    .catch(() => {
+        showTestUploadResult("❌ Erreur de connexion avec l'Agrocam", "red");
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+}
+
 // ── Aperçu caméra ─────────────────────────────────────────────────────────────
 function togglePreview() {
     const img = document.getElementById("camera-preview");
@@ -259,6 +316,10 @@ function togglePreview() {
 
             <label>Album ID</label>
             <input name="immich_album_id" value="{{ c.upload.immich.album_id }}">
+
+            <button type="button" id="test-upload-button" onclick="testUpload()" style="background:#2e8b57;color:white;font-weight:bold;padding:10px;border:none;cursor:pointer;">Tester l'envoi d'une photo</button>
+            <p style="font-size:0.85em;color:gray;margin:4px 0;">Envoie une vraie photo vers l'album avec les champs ci-dessus, même non enregistrés. Les réglages de la section Photo doivent être enregistrés pour être pris en compte.</p>
+            <div id="test-upload-status" style="font-size:0.85em;margin:4px 0;overflow-wrap:anywhere;"></div>
         </div>
     </div>
 
@@ -442,6 +503,21 @@ def read_dongle_status():
         "signal": result.get("rssi", 0)
     }
 
+def validate_immich_fields(url, api_key, album_id, timeout):
+    """Retourne tous les problèmes des champs du formulaire, pour les afficher en une fois."""
+    errors = []
+    if not url:
+        errors.append("Champ manquant : URL Immich")
+    elif not url.startswith(("http://", "https://")):
+        errors.append("URL Immich invalide : elle doit commencer par http:// ou https://")
+    if not api_key:
+        errors.append("Champ manquant : API Key Immich")
+    if not album_id:
+        errors.append("Champ manquant : Album ID")
+    if not timeout.isdigit() or int(timeout) < 1:
+        errors.append("Timeout pour l'envoi d'une photo invalide : il doit être un entier positif")
+    return errors
+
 # ---------- Routes ----------
 
 @app.route("/sync_time", methods=["POST"])
@@ -588,6 +664,62 @@ def shutdown():
     subprocess.Popen(["sudo", "shutdown", "-h", "now"])
     return "<h1>Arrêt du système en cours...</h1>"
 
+@app.route("/test_upload", methods=["POST"])
+def test_upload():
+    """
+    Prend une photo et l'envoie vers Immich avec les fonctions de agrocam.py.
+    La photo passe par un dossier temporaire : elle n'est pas conservée et ne sera
+    donc pas renvoyée comme photo en attente. Le réseau reste celui en place, car
+    wait_for_network() couperait le hotspot en se connectant au Wi-Fi.
+    """
+    data = request.get_json(silent=True) or {}
+    url = str(data.get("url", "")).strip()
+    api_key = str(data.get("api_key", "")).strip()
+    album_id = str(data.get("album_id", "")).strip()
+    timeout = str(data.get("timeout", "")).strip()
+
+    errors = validate_immich_fields(url, api_key, album_id, timeout)
+    if errors:
+        return {"status": "error", "messages": errors}, 400
+
+    upload_errors = []
+    try:
+        # Import tardif : un problème dans agrocam.py ne doit pas rendre la page inaccessible
+        import agrocam
+        agrocam.credentials = load_credentials()
+
+        stop_preview()
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as dir_path:
+            with preview_lock:
+                move_shutter(SHUTTER_OPEN_ANGLE)
+                try:
+                    filepath = agrocam.prendre_photo(
+                        None,
+                        extension=agrocam.credentials["photo"]["format"],
+                        tag="test",
+                        dir_path=dir_path
+                    )
+                finally:
+                    move_shutter(SHUTTER_CLOSED_ANGLE)
+
+            asset = agrocam.envoyer_http_immich(
+                filepath, url, api_key, album_id,
+                timeout=int(timeout), errors=upload_errors
+            )
+    except subprocess.CalledProcessError as e:
+        # prendre_photo échoue au chmod quand rpicam-still n'a pas créé le fichier
+        print(f"[TEST] Erreur : {e}", file=__import__('sys').stderr)
+        return {"status": "error", "messages": ["La caméra n'a pas produit de photo : vérifiez son branchement"]}, 500
+    except Exception as e:
+        print(f"[TEST] Erreur : {e}", file=__import__('sys').stderr)
+        return {"status": "error", "messages": [f"Test impossible : {e}"]}, 500
+
+    if asset is None:
+        return {"status": "error", "messages": upload_errors}, 502
+    if upload_errors:
+        return {"status": "partial", "messages": upload_errors}
+    return {"status": "ok"}
+
 @app.route("/dongle_status")
 def dongle_status():
     return read_dongle_status()
@@ -614,4 +746,6 @@ def camera_stop():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    # "::" écoute aussi en IPv4 sous Linux : agrocam.local peut ne résoudre qu'en IPv6
+    host = "::" if os.path.exists("/proc/net/if_inet6") else "0.0.0.0"
+    app.run(host=host, port=5000, debug=False, use_reloader=False)

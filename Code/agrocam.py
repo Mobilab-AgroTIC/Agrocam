@@ -223,13 +223,19 @@ def envoyer_http_agrocam(filepath, server_url=AGROCAM_SERVER, metadata_key=AGROC
         print("Corps de la réponse :", file=sys.stderr)
         print(response.text, file=sys.stderr)
 
-def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID, voltage=None, timeout=10):
+def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID, voltage=None, timeout=10, errors=None):
     """
     Envoie une photo vers un serveur Immich via l'API.
     :param file_path: Chemin local de l'image (ex: '/home/pi/photo.png')
     :param server_url: URL de votre instance (ex: 'http://192.168.1.50:2283')
     :param api_key: Votre clé API Immich
+    :param errors: Liste optionnelle qui reçoit les messages d'erreur (ex: pour les afficher à l'utilisateur)
     """
+    def report_error(message):
+        print(message)
+        if errors is not None:
+            errors.append(message)
+
     filename = os.path.basename(filepath)
     stats = os.stat(filepath)
 
@@ -257,7 +263,7 @@ def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, alb
             response = requests.post(base_url, headers=headers, data=data, files=files, timeout=timeout)
 
         if response.status_code not in [200, 201]:
-            print(f"❌ Erreur Upload {response.status_code} : {response.text}")
+            report_error(f"❌ Erreur Upload {response.status_code} : {response.text}")
             return None
 
         asset_info = response.json()
@@ -277,7 +283,7 @@ def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, alb
             if res_upd.status_code == 200:
                 print(f"📝 Description mise à jour V")
             else:
-                print(f"⚠️ Erreur Description : {res_upd.text}")
+                report_error(f"⚠️ Erreur Description : {res_upd.text}")
 
         if asset_id and album_id:
             album_url = f"{server_url.rstrip('/')}/api/albums/{album_id}/assets"
@@ -288,12 +294,12 @@ def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, alb
             if album_res.status_code in [200, 201]:
                 print(f"📂 Photo ajoutée à l'album {album_id}")
             else:
-                print(f"⚠️ Erreur Album {album_res.status_code} : {album_res.text}")
+                report_error(f"⚠️ Erreur Album {album_res.status_code} : {album_res.text}")
 
         return asset_info
 
     except Exception as e:
-        print(f"⚠️ Erreur : {e}")
+        report_error(f"⚠️ Erreur : {e}")
         return None
 
 def get_pending_files(folder):
