@@ -36,6 +36,11 @@ filter_pwm_gpio =  credentials["servo"]["gpio_filter"]
 # Jumper de mode : HIGH (jumper branché sur 3.3V) = config, LOW (absent) = normal
 controlPin = 24
 
+USB_INTERFACE = "usb0"
+WIFI_INTERFACE = "wlan0"
+USB_DETECTION_TIMEOUT = 10   # Secondes laissées à la clé 4G pour apparaître en USB
+USB_CONNECTION_TIMEOUT = 60  # Secondes laissées à la clé 4G pour accéder à Internet
+
 
 def initialize_GPIO():
     print("Initialisation des GPIO...")
@@ -218,13 +223,19 @@ def envoyer_http_agrocam(filepath, server_url=AGROCAM_SERVER, metadata_key=AGROC
         print("Corps de la réponse :", file=sys.stderr)
         print(response.text, file=sys.stderr)
 
-def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID, voltage=None, timeout=10):
+def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, album_id=ALBUM_ID, voltage=None, timeout=10, errors=None):
     """
     Envoie une photo vers un serveur Immich via l'API.
     :param file_path: Chemin local de l'image (ex: '/home/pi/photo.png')
     :param server_url: URL de votre instance (ex: 'http://192.168.1.50:2283')
     :param api_key: Votre clé API Immich
+    :param errors: Liste optionnelle qui reçoit les messages d'erreur (ex: pour les afficher à l'utilisateur)
     """
+    def report_error(message):
+        print(message)
+        if errors is not None:
+            errors.append(message)
+
     filename = os.path.basename(filepath)
     stats = os.stat(filepath)
 
@@ -252,7 +263,7 @@ def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, alb
             response = requests.post(base_url, headers=headers, data=data, files=files, timeout=timeout)
 
         if response.status_code not in [200, 201]:
-            print(f"❌ Erreur Upload {response.status_code} : {response.text}")
+            report_error(f"❌ Erreur Upload {response.status_code} : {response.text}")
             return None
 
         asset_info = response.json()
@@ -272,7 +283,7 @@ def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, alb
             if res_upd.status_code == 200:
                 print(f"📝 Description mise à jour V")
             else:
-                print(f"⚠️ Erreur Description : {res_upd.text}")
+                report_error(f"⚠️ Erreur Description : {res_upd.text}")
 
         if asset_id and album_id:
             album_url = f"{server_url.rstrip('/')}/api/albums/{album_id}/assets"
@@ -283,12 +294,12 @@ def envoyer_http_immich(filepath, server_url=IMMICH_SERVER, api_key=API_KEY, alb
             if album_res.status_code in [200, 201]:
                 print(f"📂 Photo ajoutée à l'album {album_id}")
             else:
-                print(f"⚠️ Erreur Album {album_res.status_code} : {album_res.text}")
+                report_error(f"⚠️ Erreur Album {album_res.status_code} : {album_res.text}")
 
         return asset_info
 
     except Exception as e:
-        print(f"⚠️ Erreur : {e}")
+        report_error(f"⚠️ Erreur : {e}")
         return None
 
 def get_pending_files(folder):
@@ -296,9 +307,9 @@ def get_pending_files(folder):
     return [os.path.join(folder, f) for f in files if "pending" in f]
 
 def resend_pending_photos(voltage, upload_type, dir_path):
-    """Renvoie toutes les photos non envoyées (_pending) si le Wi-Fi est disponible"""
+    """Renvoie toutes les photos non envoyées (_pending) si une connexion est disponible"""
     if not is_connected():
-        print("Pas de Wi-Fi, impossible de renvoyer les anciennes photos.")
+        print("Pas de connexion, impossible de renvoyer les anciennes photos.")
         return
 
     if voltage is not None:
@@ -328,15 +339,67 @@ def resend_pending_photos(voltage, upload_type, dir_path):
 
 
 
-def is_connected():
+def is_connected(interface=None):
+    """Teste l'accès à Internet, par une interface précise si elle est indiquée."""
+    cmd = ["ping", "-c", "1", "-W", "1"]
+    if interface:
+        cmd.extend(["-I", interface])
+    cmd.append("8.8.8.8")
     try:
-        subprocess.check_output(
-            ["ping", "-c", "1", "-W", "1", "8.8.8.8"],
-            stderr=subprocess.DEVNULL
-        )
+        subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
         return True
     except subprocess.CalledProcessError:
         return False
+
+def use_interface(interface):
+    """
+    Fait passer le trafic par cette interface, même si une autre a une route prioritaire
+    (ex : clé 4G branchée mais sans réseau). La route disparaît au prochain démarrage.
+    """
+    routes = subprocess.run(
+        ["ip", "-4", "route", "show", "default", "dev", interface],
+        capture_output=True, text=True, timeout=5
+    ).stdout.split()
+    if "via" not in routes:
+        print(f"Pas de passerelle sur {interface}")
+        return False
+
+    gateway = routes[routes.index("via") + 1]
+    result = subprocess.run(
+        ["sudo", "ip", "route", "replace", "default", "via", gateway, "dev", interface, "metric", "1"],
+        capture_output=True, text=True, timeout=5
+    )
+    if result.returncode != 0:
+        print(f"Impossible d'utiliser {interface} : {result.stderr.strip()}", file=sys.stderr)
+        return False
+    return True
+
+def wait_for_usb_4g(detection_timeout=USB_DETECTION_TIMEOUT, connection_timeout=USB_CONNECTION_TIMEOUT):
+    """Attend l'accès à Internet par la clé 4G en USB. Abandonne vite si la clé est absente."""
+    start_time = datetime.now()
+
+    while not os.path.exists(f"/sys/class/net/{USB_INTERFACE}"):
+        if datetime.now() - start_time >= timedelta(seconds=detection_timeout):
+            print("Pas de clé 4G détectée en USB.")
+            return False
+        sleep(1)
+
+    print(f"Clé 4G détectée sur {USB_INTERFACE}, attente de l'accès à Internet...")
+    while datetime.now() - start_time < timedelta(seconds=connection_timeout):
+        if is_connected(USB_INTERFACE) and use_interface(USB_INTERFACE):
+            print("Succès : connecté à Internet par la clé 4G en USB.")
+            return True
+        sleep(3)
+
+    print(f"Échec : pas d'accès à Internet par USB après {connection_timeout}s.")
+    return False
+
+def wait_for_network():
+    """Choisit la connexion pour l'envoi des photos : USB 4G en priorité, sinon Wi-Fi."""
+    if wait_for_usb_4g():
+        return True
+    print("Bascule sur le Wi-Fi...")
+    return wait_for_wifi(credentials["wifi"]["timeout"])
 
 def get_current_ssid():
     """Vérification instantanée du SSID actuel via le kernel."""
@@ -367,7 +430,7 @@ def wait_for_wifi(timeout=60):
         current_ssid = get_current_ssid()
 
         if current_ssid == target:
-            if is_connected():
+            if is_connected(WIFI_INTERFACE) and use_interface(WIFI_INTERFACE):
                 print(f"Succès : Connecté à {target} avec accès Internet.")
                 return True
             else:
@@ -378,7 +441,7 @@ def wait_for_wifi(timeout=60):
 
         sleep(3)
 
-    if is_connected():
+    if is_connected(WIFI_INTERFACE) and use_interface(WIFI_INTERFACE):
         return True
     else:
         print(f"Échec : Cible {target} non rejointe après {timeout}s.")
@@ -516,11 +579,11 @@ def main():
             #servo.shutter.stop()
             #servo.filter.stop()
 
-        wifi_ok = wait_for_wifi(credentials["wifi"]["timeout"])
+        network_ok = wait_for_network()
 
         if credentials["upload"]["type"] == "immich":
             if credentials["upload"]["immich"]["album_id"] != "":
-                if wifi_ok:
+                if network_ok:
                     print("Envoi de la photo et des métadonnées via HTTP...")
                     envoyer_http_immich(filepath,
                                 credentials["upload"]["immich"]["url"],
@@ -530,12 +593,12 @@ def main():
                                 timeout=TIMEOUT)
                     resend_pending_photos(voltage, credentials["upload"]["type"], dir_path=dir_path)
                 else:
-                    print("Envoi annulé (pas de Wi-Fi)")
+                    print("Envoi annulé (pas de connexion)")
             else:
                 print("En attente d'un album_id")
         elif credentials["upload"]["type"] == "agrocam":
             if credentials["upload"]["agrocam"]["name"] != "":
-                if wifi_ok:
+                if network_ok:
                     print("Envoi de la photo et des métadonnées via HTTP...")
                     envoyer_http_agrocam(filepath,
                                 credentials["upload"]["agrocam"]["url"],
@@ -544,7 +607,7 @@ def main():
                                 timeout=TIMEOUT)
                     resend_pending_photos(voltage, credentials["upload"]["type"], dir_path=dir_path)
                 else:
-                    print("Envoi annulé (pas de Wi-Fi)")
+                    print("Envoi annulé (pas de connexion)")
             else:
                 print("En attente d'un name d'agrocam")
 
