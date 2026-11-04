@@ -6,7 +6,7 @@ import re
 import subprocess
 import threading
 from wittypi import set_startup_time, calculate_next_startup_time, setup_wittypi
-from servo import hello_world_servo, move_servo, ServoManager
+from servo import move_servo, ServoManager
 CREDENTIALS_FILE = "/home/pi/credentials.json"
 
 # Angles de l'obturateur, identiques à ceux utilisés par agrocam.py
@@ -101,21 +101,6 @@ document.addEventListener("DOMContentLoaded", updateUploadFields);
 document.addEventListener("DOMContentLoaded", updateFilterFields);
 document.addEventListener("DOMContentLoaded", updateFormatFields);
 
-function testServo() {
-    const el = document.getElementById("servo-status");
-    el.textContent = "Activation en cours...";
-    el.style.color = "gray";
-    fetch("/test_servo", { method: "POST" })
-        .then(r => r.json())
-        .then(data => {
-            el.textContent = data.status === "ok" ? "✅ Servo activé" : "❌ Erreur : " + data.message;
-            el.style.color = data.status === "ok" ? "green" : "red";
-        })
-        .catch(() => {
-            el.textContent = "❌ Erreur de connexion";
-            el.style.color = "red";
-        });
-}
 
 // ── Aperçu caméra ─────────────────────────────────────────────────────────────
 function togglePreview() {
@@ -180,9 +165,6 @@ function togglePreview() {
 {% endif %}
 
 <hr>
-
-<button type="button" onclick="testServo()" style="background:#8b7ad6;color:black;font-weight:bold;padding:10px;border:none;cursor:pointer;">Test Servo</button>
-<p id="servo-status" style="font-size:0.85em;color:gray;margin:4px 0;"></p>
 
 <div class="section">
     <h2>Aperçu caméra</h2>
@@ -541,17 +523,6 @@ def index():
 def shutdown():
     subprocess.Popen(["sudo", "shutdown", "-h", "now"])
     return "<h1>Arrêt du système en cours...</h1>"
-
-@app.route("/test_servo", methods=["POST"])
-def servo():
-    try:
-        creds = load_credentials()
-        with ServoManager(creds["servo"]["gpio_shutter"], creds["servo"]["gpio_filter"]) as servo:
-            hello_world_servo(servo.shutter)
-            hello_world_servo(servo.filter)
-        return {"status": "ok"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}, 500
 
 @app.route("/camera_stream")
 def camera_stream():

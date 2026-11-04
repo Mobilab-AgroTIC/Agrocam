@@ -400,7 +400,6 @@ def get_serial_suffix():
 
 def start_hotspot():
     ssid = f"Agrocam-{get_serial_suffix()}"
-    password = "agrocam123"
     print(f"[CONFIG] Création du hotspot : SSID={ssid}")
 
     # Mise à jour dynamique du SSID
@@ -417,7 +416,6 @@ def start_hotspot():
     if result.returncode == 0:
         print(f"[CONFIG] ✅ Hotspot actif")
         print(f"[CONFIG]    → Connectez-vous à '{ssid}' (pas de mot de passe)")
-        print(f"[CONFIG]    → Ouvrez http://10.42.0.1:5000")
         return True
     else:
         print(f"[CONFIG] ⚠️  Erreur hotspot : {result.stderr.strip()}", file=sys.stderr)
