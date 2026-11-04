@@ -36,6 +36,11 @@ filter_pwm_gpio =  credentials["servo"]["gpio_filter"]
 # Jumper de mode : HIGH (jumper branché sur 3.3V) = config, LOW (absent) = normal
 controlPin = 24
 
+USB_INTERFACE = "usb0"
+WIFI_INTERFACE = "wlan0"
+USB_DETECTION_TIMEOUT = 10   # Secondes laissées à la clé 4G pour apparaître en USB
+USB_CONNECTION_TIMEOUT = 60  # Secondes laissées à la clé 4G pour accéder à Internet
+
 
 def initialize_GPIO():
     print("Initialisation des GPIO...")
@@ -296,9 +301,9 @@ def get_pending_files(folder):
     return [os.path.join(folder, f) for f in files if "pending" in f]
 
 def resend_pending_photos(voltage, upload_type, dir_path):
-    """Renvoie toutes les photos non envoyées (_pending) si le Wi-Fi est disponible"""
+    """Renvoie toutes les photos non envoyées (_pending) si une connexion est disponible"""
     if not is_connected():
-        print("Pas de Wi-Fi, impossible de renvoyer les anciennes photos.")
+        print("Pas de connexion, impossible de renvoyer les anciennes photos.")
         return
 
     if voltage is not None:
@@ -328,15 +333,67 @@ def resend_pending_photos(voltage, upload_type, dir_path):
 
 
 
-def is_connected():
+def is_connected(interface=None):
+    """Teste l'accès à Internet, par une interface précise si elle est indiquée."""
+    cmd = ["ping", "-c", "1", "-W", "1"]
+    if interface:
+        cmd.extend(["-I", interface])
+    cmd.append("8.8.8.8")
     try:
-        subprocess.check_output(
-            ["ping", "-c", "1", "-W", "1", "8.8.8.8"],
-            stderr=subprocess.DEVNULL
-        )
+        subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
         return True
     except subprocess.CalledProcessError:
         return False
+
+def use_interface(interface):
+    """
+    Fait passer le trafic par cette interface, même si une autre a une route prioritaire
+    (ex : clé 4G branchée mais sans réseau). La route disparaît au prochain démarrage.
+    """
+    routes = subprocess.run(
+        ["ip", "-4", "route", "show", "default", "dev", interface],
+        capture_output=True, text=True, timeout=5
+    ).stdout.split()
+    if "via" not in routes:
+        print(f"Pas de passerelle sur {interface}")
+        return False
+
+    gateway = routes[routes.index("via") + 1]
+    result = subprocess.run(
+        ["sudo", "ip", "route", "replace", "default", "via", gateway, "dev", interface, "metric", "1"],
+        capture_output=True, text=True, timeout=5
+    )
+    if result.returncode != 0:
+        print(f"Impossible d'utiliser {interface} : {result.stderr.strip()}", file=sys.stderr)
+        return False
+    return True
+
+def wait_for_usb_4g(detection_timeout=USB_DETECTION_TIMEOUT, connection_timeout=USB_CONNECTION_TIMEOUT):
+    """Attend l'accès à Internet par la clé 4G en USB. Abandonne vite si la clé est absente."""
+    start_time = datetime.now()
+
+    while not os.path.exists(f"/sys/class/net/{USB_INTERFACE}"):
+        if datetime.now() - start_time >= timedelta(seconds=detection_timeout):
+            print("Pas de clé 4G détectée en USB.")
+            return False
+        sleep(1)
+
+    print(f"Clé 4G détectée sur {USB_INTERFACE}, attente de l'accès à Internet...")
+    while datetime.now() - start_time < timedelta(seconds=connection_timeout):
+        if is_connected(USB_INTERFACE) and use_interface(USB_INTERFACE):
+            print("Succès : connecté à Internet par la clé 4G en USB.")
+            return True
+        sleep(3)
+
+    print(f"Échec : pas d'accès à Internet par USB après {connection_timeout}s.")
+    return False
+
+def wait_for_network():
+    """Choisit la connexion pour l'envoi des photos : USB 4G en priorité, sinon Wi-Fi."""
+    if wait_for_usb_4g():
+        return True
+    print("Bascule sur le Wi-Fi...")
+    return wait_for_wifi(credentials["wifi"]["timeout"])
 
 def get_current_ssid():
     """Vérification instantanée du SSID actuel via le kernel."""
@@ -367,7 +424,7 @@ def wait_for_wifi(timeout=60):
         current_ssid = get_current_ssid()
 
         if current_ssid == target:
-            if is_connected():
+            if is_connected(WIFI_INTERFACE) and use_interface(WIFI_INTERFACE):
                 print(f"Succès : Connecté à {target} avec accès Internet.")
                 return True
             else:
@@ -378,7 +435,7 @@ def wait_for_wifi(timeout=60):
 
         sleep(3)
 
-    if is_connected():
+    if is_connected(WIFI_INTERFACE) and use_interface(WIFI_INTERFACE):
         return True
     else:
         print(f"Échec : Cible {target} non rejointe après {timeout}s.")
@@ -516,11 +573,11 @@ def main():
             #servo.shutter.stop()
             #servo.filter.stop()
 
-        wifi_ok = wait_for_wifi(credentials["wifi"]["timeout"])
+        network_ok = wait_for_network()
 
         if credentials["upload"]["type"] == "immich":
             if credentials["upload"]["immich"]["album_id"] != "":
-                if wifi_ok:
+                if network_ok:
                     print("Envoi de la photo et des métadonnées via HTTP...")
                     envoyer_http_immich(filepath,
                                 credentials["upload"]["immich"]["url"],
@@ -530,12 +587,12 @@ def main():
                                 timeout=TIMEOUT)
                     resend_pending_photos(voltage, credentials["upload"]["type"], dir_path=dir_path)
                 else:
-                    print("Envoi annulé (pas de Wi-Fi)")
+                    print("Envoi annulé (pas de connexion)")
             else:
                 print("En attente d'un album_id")
         elif credentials["upload"]["type"] == "agrocam":
             if credentials["upload"]["agrocam"]["name"] != "":
-                if wifi_ok:
+                if network_ok:
                     print("Envoi de la photo et des métadonnées via HTTP...")
                     envoyer_http_agrocam(filepath,
                                 credentials["upload"]["agrocam"]["url"],
@@ -544,7 +601,7 @@ def main():
                                 timeout=TIMEOUT)
                     resend_pending_photos(voltage, credentials["upload"]["type"], dir_path=dir_path)
                 else:
-                    print("Envoi annulé (pas de Wi-Fi)")
+                    print("Envoi annulé (pas de connexion)")
             else:
                 print("En attente d'un name d'agrocam")
 

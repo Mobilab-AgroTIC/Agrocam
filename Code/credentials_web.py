@@ -3,6 +3,7 @@ from flask import Flask, Response, request, render_template_string
 import json
 import os
 import re
+import requests
 import subprocess
 import threading
 from wittypi import set_startup_time, calculate_next_startup_time, setup_wittypi
@@ -15,6 +16,11 @@ SHUTTER_CLOSED_ANGLE = 90
 
 PREVIEW_WIDTH = 640
 PREVIEW_FRAMERATE = 10
+
+USB_INTERFACE = "usb0"
+# API de la clé 4G : funcNo 1001 renvoie l'opérateur, le réseau, l'état et le signal (0 à 5)
+DONGLE_API_URL = "http://192.168.100.1/ajax"
+DONGLE_STATUS_FUNC = 1001
 
 app = Flask(__name__)
 
@@ -101,6 +107,36 @@ document.addEventListener("DOMContentLoaded", updateUploadFields);
 document.addEventListener("DOMContentLoaded", updateFilterFields);
 document.addEventListener("DOMContentLoaded", updateFormatFields);
 
+// ── État de la clé 4G ─────────────────────────────────────────────────────────
+function updateDongleStatus() {
+    const el = document.getElementById("dongle-status");
+    fetch("/dongle_status")
+        .then(r => r.json())
+        .then(data => {
+            if (!data.detected) {
+                el.textContent = "⚪ Clé 4G non détectée en USB";
+                el.style.color = "gray";
+            } else if (!data.readable) {
+                el.textContent = "⚠️ Clé 4G détectée, état illisible";
+                el.style.color = "orange";
+            } else if (data.connected) {
+                el.textContent = "✅ 4G connectée : " + data.operator + ", " + data.network + ", signal " + data.signal + "/5";
+                el.style.color = "green";
+            } else {
+                el.textContent = "❌ Clé 4G détectée, réseau 4G non connecté (signal " + data.signal + "/5)";
+                el.style.color = "red";
+            }
+        })
+        .catch(() => {
+            el.textContent = "❌ Erreur de connexion";
+            el.style.color = "red";
+        });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    updateDongleStatus();
+    setInterval(updateDongleStatus, 10000);
+});
 
 // ── Aperçu caméra ─────────────────────────────────────────────────────────────
 function togglePreview() {
@@ -165,6 +201,11 @@ function togglePreview() {
 {% endif %}
 
 <hr>
+
+<div class="section">
+    <h2>Connexion 4G</h2>
+    <p id="dongle-status" style="color:gray;margin:4px 0;">Lecture de l'état de la clé 4G...</p>
+</div>
 
 <div class="section">
     <h2>Aperçu caméra</h2>
@@ -378,6 +419,29 @@ def generate_frames(process):
     finally:
         stop_preview(process)
 
+def read_dongle_status():
+    if not os.path.exists(f"/sys/class/net/{USB_INTERFACE}"):
+        return {"detected": False}
+
+    try:
+        response = requests.post(DONGLE_API_URL, json={"funcNo": DONGLE_STATUS_FUNC}, timeout=3)
+        data = response.json()
+        if str(data.get("flag")) != "1":
+            raise ValueError(data.get("error_info"))
+        result = data["results"][0]
+    except (requests.RequestException, ValueError, KeyError, IndexError, TypeError, AttributeError) as e:
+        print(f"[4G] État illisible : {e}", file=__import__('sys').stderr)
+        return {"detected": True, "readable": False}
+
+    return {
+        "detected": True,
+        "readable": True,
+        "connected": str(result.get("netstatus", "")).lower() == "connected",
+        "operator": result.get("oper", "opérateur inconnu"),
+        "network": result.get("netmode", "réseau inconnu"),
+        "signal": result.get("rssi", 0)
+    }
+
 # ---------- Routes ----------
 
 @app.route("/sync_time", methods=["POST"])
@@ -523,6 +587,10 @@ def index():
 def shutdown():
     subprocess.Popen(["sudo", "shutdown", "-h", "now"])
     return "<h1>Arrêt du système en cours...</h1>"
+
+@app.route("/dongle_status")
+def dongle_status():
+    return read_dongle_status()
 
 @app.route("/camera_stream")
 def camera_stream():
