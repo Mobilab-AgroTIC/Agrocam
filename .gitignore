@@ -1,1 +1,3 @@
 Code/credentials_agrotic.py
+__pycache__/
+*.pyc
